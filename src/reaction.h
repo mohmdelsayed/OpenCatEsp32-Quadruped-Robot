@@ -323,6 +323,22 @@ bool lowBattery()
       playMelody(melodyOnBattery, sizeof(melodyOnBattery) / 2);
       lowBatteryQ = false;
       batteryWarningCounter = 0;
+      // Reactivate PWM signals to fix servo non-responsiveness after battery power restoration
+      PTL("Reactivating servo PWM signals after power restoration...");
+#ifdef ESP_PWM
+      // Simply resend PWM signals for current positions
+      for (int c = 0; c < PWM_NUM; c++) {
+        servo[c].write(currentAng[c < 4 ? c : c + 4]);
+      }
+#else
+      // Resend PCA9685 PWM signals
+      for (int c = 0; c < PWM_NUM; c++) {
+        pwm.writeAngle(c, currentAng[c < 4 ? c : c + 4]);
+      }
+#endif
+      // Return to rest posture
+      strcpy(newCmd, "rest");
+      loadBySkillName(newCmd);
     }
   }
   return false;
@@ -444,24 +460,28 @@ void reaction()
           webServerConnected = connectWifi(ssid, password);
           if (webServerConnected)
           {
-            PTLF("Successfully connected to Wifi:");
-            PTL(WiFi.localIP());
-            PTLF("Web server will be started via startWifiManager");
+//            PTHL("Successfully connected Wifi to IP Address: ", WiFi.localIP());
+printToAllPorts("Successfully connected Wifi to IP Address: ",0);
+printToAllPorts(WiFi.localIP());
 #ifdef I2C_EEPROM_ADDRESS
             i2c_eeprom_write_byte(EEPROM_WIFI_MANAGER, true);
 #else
             config.putBool("WifiManager", true);
 #endif
+            PTLF("Rebooting to use web server.");
+            delay(3000);
+            ESP.restart();
           }
           else
           {
-            Serial.println("Timeout: Fail to connect web server!");
+            Serial.println("Timeout: Fail to connect Wifi!");
           }
         }
       }
       else
       {
-        PTHL("Wifi already connected to IP Address: ", WiFi.localIP());
+        printToAllPorts("Wifi already connected to IP Address: ",0);
+        printToAllPorts(WiFi.localIP());
         PTLF("Web server should already be running");
         PTLF("Press the BOOT key to reboot and use Wifi manager.");
         PTLF("Hold the BOOT key if you want to clear the previous Wifi credentials.");
@@ -1118,8 +1138,12 @@ void reaction()
       {
         if (cmdLen >= 3)
         {
+          int distance = readUltrasonic((int8_t)newCmd[1], (int8_t)newCmd[2]);
           printToAllPorts('=');
-          printToAllPorts(readUltrasonic((int8_t)newCmd[1], (int8_t)newCmd[2]));
+          printToAllPorts(distance);
+#ifdef WEB_SERVER
+          sendUltrasonicData(distance); // 发送超声波数据到WebSocket客户端
+#endif
         }
         break;
       }
@@ -1463,6 +1487,9 @@ void reaction()
     showRecognitionResult(xCoord, yCoord, width, height);
     PTL();
     FPS();
+#ifdef WEB_SERVER
+    sendCameraData(xCoord, yCoord, width, height); // 发送摄像头数据到WebSocket客户端
+#endif
   }
   else if (!cameraTaskActiveQ)
 #endif

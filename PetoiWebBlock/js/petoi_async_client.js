@@ -1,144 +1,277 @@
 /**
- * PetoiWebBlock 异步通信客户端
- * 解决看门狗重启问题，支持严格时序控制
+ * PetoiWebBlock WebSocket客户端
+ * 实现实时双向通信
  */
+
 
 class PetoiAsyncClient
 {
     constructor(baseUrl = null)
     {
-        this.baseUrl = baseUrl || `http://${window.location.hostname}`;
-        this.taskTimeout = 10000; // 10秒超时
+        this.baseUrl = baseUrl || `ws://${window.location.hostname}:81`;
+        this.taskTimeout = 30000; // 30秒超时
+        this.ws = null;
+        this.connected = false;
+        this.pendingTasks = new Map();
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 1000;
+        this.heartbeatInterval = null;
+        this.heartbeatTimeout = null;
+        this.heartbeatIntervalMs = 10000; // 10秒发送一次心跳
+        this.heartbeatTimeoutMs = 15000;  // 15秒没有响应就重连
+        this.lastHeartbeatTime = 0;       // 记录最后一次心跳时间
+        this.eventTarget = new EventTarget();
+        this.clientId = Date.now().toString(); // 唯一客户端ID
     }
 
     /**
-     * 发送异步命令
+     * 启动心跳
      */
-    async sendCommand(cmd)
+    startHeartbeat()
     {
-        try
-        {
-            const response = await fetch(`${this.baseUrl}/?cmd=${encodeURIComponent(cmd)}`);
-            const taskId = (await response.text()).replace('TASK_ID:', '').trim();
-            return await this.waitForCompletion(taskId);
-        } catch (error)
-        {
-            throw new Error(`命令发送失败: ${error.message}`);
-        }
-    }
+        // 清除可能存在的旧心跳
+        this.stopHeartbeat();
 
-    /**
-     * 等待任务完成
-     */
-    async waitForCompletion(taskId)
-    {
-        const startTime = Date.now();
-
-        while (Date.now() - startTime < this.taskTimeout)
-        {
-            try
-            {
-                const response = await fetch(`${this.baseUrl}/status?taskId=${taskId}`);
-                const text = await response.text();
-                const lines = text.trim().split('\n');
-                const status = lines[0];
-                const result = lines.slice(1).join('\n');
-
-                if (status === 'completed')
-                {
-                    return result;
-                } else if (status === 'error')
-                {
-                    throw new Error(result);
-                }
-
-                await this.delay(100);
-            } catch (error)
-            {
-                throw new Error(`状态查询失败: ${error.message}`);
+        // 设置心跳定时器
+        this.heartbeatInterval = setInterval(() => {
+            if (this.connected) {
+                this.sendHeartbeat();
+                
+                // 设置心跳超时
+                this.heartbeatTimeout = setTimeout(() => {
+                    console.log(getText('heartbeatTimeout'));
+                    this.disconnect();
+                }, this.heartbeatTimeoutMs);
             }
+        }, this.heartbeatIntervalMs);
+        // 延时1秒后发送心跳
+        // setTimeout(() => {
+        //     this.sendHeartbeat();
+        // }, 1000);
+    }
+
+    /**
+     * 停止心跳
+     */
+    stopHeartbeat()
+    {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+            console.log(getText('heartbeatStopped'));
+        }
+        if (this.heartbeatTimeout) {
+            clearTimeout(this.heartbeatTimeout);
+            this.heartbeatTimeout = null;
+        }
+    }
+
+    /**
+     * 连接到WebSocket服务器
+     */
+    async connect()
+    {
+        return new Promise((resolve, reject) => {
+            this.ws = new WebSocket(this.baseUrl);
+
+            this.ws.onopen = () => {
+                this.connected = true;
+                this.reconnectAttempts = 0;
+                console.log(getText('websocketConnected'));
+                this.lastHeartbeatTime = Date.now();
+                resolve();
+            };
+
+            this.ws.onclose = () => {
+                this.connected = false;
+                this.stopHeartbeat(); // 停止心跳
+                console.log(getText('websocketClosed'));
+            };
+
+            this.ws.onerror = (error) => {
+                console.error(getText('websocketError'), error);
+                reject(error);
+            };
+
+            this.ws.onmessage = (event) => {
+                this.handleMessage(event.data);
+            };
+        });
+    }
+
+    /**
+     * 处理重连
+     */
+    handleReconnect()
+    {
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            console.log(getText('reconnectAttempt').replace('{current}', this.reconnectAttempts).replace('{max}', this.maxReconnectAttempts));
+            setTimeout(() => this.connect(), this.reconnectDelay);
+        } else {
+            console.error(getText('maxReconnectAttempts'));
+        }
+    }
+
+    /**
+     * 发送心跳消息
+     */
+    sendHeartbeat()
+    {
+        if (this.ws && this.connected) {
+            const now = Date.now();
+            const timeSinceLastHeartbeat = now - this.lastHeartbeatTime;
+            console.log(getText('heartbeatSent').replace('{time}', timeSinceLastHeartbeat));
+            
+            const heartbeatMessage = {
+                type: 'heartbeat',
+                timestamp: now
+            };
+            this.ws.send(JSON.stringify(heartbeatMessage));
+            this.lastHeartbeatTime = now;
+        }
+    }
+
+    /**
+     * 处理接收到的消息
+     */
+    handleMessage(data)
+    {
+        try {
+            console.log('handleMessage', data);
+            // 清理数据中的特殊字符
+            const cleanData = data.replace(/[\r\n\t\f\v]/g, ' ').trim();
+            const message = JSON.parse(cleanData);
+            //print message type
+            console.log('message type', message.type);
+            // 处理心跳响应
+            if (message.type === 'heartbeat') {
+                const now = Date.now();
+                const latency = now - this.lastHeartbeatTime;
+                console.log(getText('heartbeatResponse').replace('{latency}', latency));
+                if (this.heartbeatTimeout) {
+                    clearTimeout(this.heartbeatTimeout);
+                    this.heartbeatTimeout = null;
+                }
+                return;
+            }
+
+            // 处理错误消息
+            if (message.error) {
+                console.error(getText('serverError'), message.error);
+                return;
+            }
+
+            // 处理任务相关消息
+            if (message.taskId && this.pendingTasks.has(message.taskId)) {
+                const task = this.pendingTasks.get(message.taskId);
+                
+                switch (message.status) {
+                    case 'running':
+                        task.onProgress && task.onProgress(message);
+                        break;
+                    case 'completed':
+                        if (message.results.length > 0) {
+                            task.resolve(message.results);
+                        } else {
+                            task.reject(new Error("response no results"));
+                        }
+                        this.pendingTasks.delete(message.taskId);
+                        break;
+                    case 'error':
+                        task.reject(new Error(message.error));
+                        this.pendingTasks.delete(message.taskId);
+                        break;
+                }
+                return;
+            }
+
+            if (message.event) {
+                this.eventTarget.dispatchEvent(new CustomEvent(message.event, message));
+            }
+        } catch (error) {
+            console.error(getText('messageProcessingError'), error);
+            console.error(getText('rawData'), data);
+        }
+    }
+
+    /**
+     * 发送命令
+     * @param {string|Array} command - 单个命令或命令数组
+     * @param {number} timeout - 超时时间（毫秒）
+     * @returns {Promise} - 返回命令执行完成后的结果
+     */
+    async sendCommand(command, timeout = this.taskTimeout)
+    {
+        if (!this.connected) {
+            throw new Error(getText('notConnected'));
         }
 
-        throw new Error(`任务${taskId}执行超时`);
+        // 将单个命令转换为命令数组
+        const commands = Array.isArray(command) ? command : [command];
+
+        if (commands.length === 0) {
+            throw new Error('Invalid command');
+        }
+
+        return new Promise((resolve, reject) => {
+            const taskId = Date.now().toString();
+            const message = {
+                type: 'command',
+                taskId: taskId,
+                commands: commands,
+                timestamp: Date.now()
+            };
+
+            const timeoutId = setTimeout(() => {
+                this.pendingTasks.delete(taskId);
+                reject(new Error(getText('commandTimeout') + ' ' + taskId + ' ' + commands.join(' ')));
+            }, timeout);
+
+            this.pendingTasks.set(taskId, {
+                resolve: (result) => {
+                    clearTimeout(timeoutId);
+                    if (Array.isArray(command)) {
+                        resolve(result.map(item => parseInt(item) || 0));
+                    } else {
+                        resolve(result[0]);
+                    }
+                },
+                reject: (error) => {
+                    clearTimeout(timeoutId);
+                    reject(error);
+                }
+            });
+            const messageStr = JSON.stringify(message);
+            console.log('send message', messageStr);
+            this.ws.send(messageStr);
+        });
+    }
+
+    /**
+     * 关闭连接
+     */
+    disconnect()
+    {
+        this.stopHeartbeat(); // 停止心跳
+        if (this.ws)
+        {
+            this.ws.close();
+            this.ws = null;
+            this.connected = false;
+        }
     }
 
     /**
      * 延迟函数
      */
-    delay(ms)
-    {
+    delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    /**
-     * 连续读取传感器
-     */
-    async readSensorContinuous(pin, count, intervalMs = 500)
-    {
-        const readings = [];
-
-        for (let i = 0; i < count; i++)
-        {
-            const result = await this.sendCommand(`Ra${pin}`);
-            readings.push(result);
-
-            if (i < count - 1)
-            {
-                await this.delay(intervalMs);
-            }
-        }
-
-        return readings;
-    }
-
-    /**
-     * 执行带时序的命令序列
-     */
-    async executeSequence(sequence)
-    {
-        for (const step of sequence)
-        {
-            if (step.type === 'command')
-            {
-                await this.sendCommand(step.cmd);
-            } else if (step.type === 'delay')
-            {
-                await this.delay(step.duration);
-            }
-        }
-    }
 }
 
-// 使用示例
-async function exampleUsage()
-{
-    const client = new PetoiAsyncClient();
-
-    // 基本命令
-    await client.sendCommand('kup');
-
-    // 时序控制序列
-    const sequence = [
-        { type: 'command', cmd: 'kwkF' },     // 向前走
-        { type: 'delay', duration: 3000 },    // 等待3秒
-        { type: 'command', cmd: 'i0 45' },    // 头部左转
-        { type: 'delay', duration: 1000 },    // 等待1秒
-        { type: 'command', cmd: 'kup' }       // 停止站立
-    ];
-
-    await client.executeSequence(sequence);
-
-    // 连续传感器读取
-    const readings = await client.readSensorContinuous('35', 5, 200);
+// 导出类
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = PetoiAsyncClient;
 }
-
-// 创建全局实例
-window.PetoiAsyncClient = PetoiAsyncClient;
-
-// 兼容性：创建默认实例
-if (typeof window !== 'undefined')
-{
-    window.petoiClient = new PetoiAsyncClient();
-}
-
-export default PetoiAsyncClient; 
