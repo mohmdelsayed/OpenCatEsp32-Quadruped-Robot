@@ -55,7 +55,7 @@ Blockly.JavaScript.forBlock["delay_ms"] = function (block) {
 // 代码生成:陀螺仪控制代码生成器
 Blockly.JavaScript.forBlock["gyro_control"] = function (block) {
     const state = block.getFieldValue("STATE");
-    const value = state === "1" ? "B" : "b";
+    const value = state === "1" ? "U" : "u";
     const command = encodeCommand("g", [value]);
     return `console.log(await webRequest("${command}", 5000, true));\n`;
 };

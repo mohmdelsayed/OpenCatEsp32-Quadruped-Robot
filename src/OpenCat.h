@@ -304,6 +304,8 @@ bool newBoard = false;
 
 #define T_GYRO 'g' // gyro-related commands. by itself, is a toggle to turn on or off the gyro function
 // These Character (C_) commands apply to the T_GYRO Token
+#define C_GYRO_UPDATE 'U'                 // update the gyro data
+#define C_GYRO_UPDATE_OFF 'u'             // stop updating the gyro data
 #define C_GYRO_FINENESS 'F'               // increase the frequency of gyroscope sampling
 #define C_GYRO_FINENESS_OFF 'f'           // reduce the frequency of gyroscope sampling to accelerate motion
 #define C_GYRO_BALANCE 'B'                // turn on the gyro balancing

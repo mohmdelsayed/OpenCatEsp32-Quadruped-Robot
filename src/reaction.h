@@ -461,8 +461,8 @@ void reaction()
           if (webServerConnected)
           {
 //            PTHL("Successfully connected Wifi to IP Address: ", WiFi.localIP());
-printToAllPorts("Successfully connected Wifi to IP Address: ",0);
-printToAllPorts(WiFi.localIP());
+            printToAllPorts("Successfully connected Wifi to IP Address: ",0);
+            printToAllPorts(WiFi.localIP());
 #ifdef I2C_EEPROM_ADDRESS
             i2c_eeprom_write_byte(EEPROM_WIFI_MANAGER, true);
 #else
@@ -548,6 +548,8 @@ printToAllPorts(WiFi.localIP());
               }
               else if (toupper(newCmd[i]) == C_GYRO_BALANCE)  // if newCmd[i] is 'b' or 'B'
                 gyroBalanceQ = (newCmd[i] == C_GYRO_BALANCE); // if newCmd[i] == T_GYRO_FINENESS, gyroBalanceQ is true. else is false.
+              else if (toupper(newCmd[i]) == C_GYRO_UPDATE)  // if newCmd[i] is 'u' or 'U' - Update gyro reading
+                updateGyroQ = (newCmd[i] == C_GYRO_UPDATE); // if newCmd[i] == 'U', updateGyroQ is true. else 'u', updateGyroQ is false.
               else if (toupper(newCmd[i]) == C_PRINT)
               {                                      // if newCmd[i] is 'p' or 'P'
                 printGyroQ = (newCmd[i] == C_PRINT); // if newCmd[i] == T_GYRO_PRINT, always print gyro. else only print once
@@ -556,6 +558,7 @@ printToAllPorts(WiFi.localIP());
               else if (newCmd[i] == '?')
               {
                 PTF("Gyro state:");
+                PTT(" Update-", updateGyroQ);
                 PTT(" Balance-", gyroBalanceQ);
                 PTT(" Print-", printGyroQ);
                 PTTL(" Frequency-", fineAdjustQ);
