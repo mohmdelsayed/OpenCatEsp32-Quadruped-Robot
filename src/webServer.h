@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WebSocketsServer.h>
 #include <WiFiManager.h>
+
 #include <map>
 #include <ArduinoJson.h>
 
@@ -37,7 +38,7 @@ std::map<String, WebTask> webTasks;
 String currentWebTaskId = "";
 bool webTaskActive = false;
 
-// 函数声明
+// Function declarations
 String generateTaskId();
 void startWebTask(String taskId);
 void completeWebTask();
@@ -247,7 +248,7 @@ void startWebTask(String taskId)
   cmdFromWeb = true;
   currentWebTaskId = taskId;
   webTaskActive = true;
-  webResponse = ""; // 清空响应缓冲区
+  webResponse = "";  // Clear response buffer
 
   // 执行命令组中的下一个命令
   if (task.currentCommandIndex < task.commandGroup.size()) {
@@ -358,12 +359,12 @@ void completeWebTask()
     clearWebTask(currentWebTaskId);
   }
 
-  // 重置全局状态
+  // Reset global state
   cmdFromWeb = false;
   webTaskActive = false;
   currentWebTaskId = "";
 
-  // 检查是否有等待的任务
+  // Check if there are waiting tasks
   processNextWebTask();
 }
 
@@ -391,12 +392,12 @@ void errorWebTask(String errorMessage)
     clearWebTask(currentWebTaskId);
   }
 
-  // 重置状态
+  // Reset state
   cmdFromWeb = false;
   webTaskActive = false;
   currentWebTaskId = "";
 
-  // 处理下一个任务
+  // Process next task
   processNextWebTask();
 }
 
@@ -437,6 +438,7 @@ bool connectWifi(String ssid, String password)
   if (WiFi.status() == WL_CONNECTED) {
     return true;
   } else {
+  } else {
     Serial.println("connection failed");
     return false;
   }
@@ -444,11 +446,15 @@ bool connectWifi(String ssid, String password)
 
 bool configureWiFiViaSerial() {
   if(Serial.available()) {
+bool configureWiFiViaSerial() {
+  if(Serial.available()) {
     String input = Serial.readStringUntil('\n');
+    if(input.startsWith("wifi%")) {
     if(input.startsWith("wifi%")) {
       int firstDelimiter = input.indexOf('%', 5);
       int secondDelimiter = input.indexOf('%', firstDelimiter + 1);
 
+      if(firstDelimiter != -1 && secondDelimiter != -1) {
       if(firstDelimiter != -1 && secondDelimiter != -1) {
         ssid = input.substring(5, firstDelimiter);
         password = input.substring(firstDelimiter + 1, secondDelimiter);
@@ -457,6 +463,7 @@ bool configureWiFiViaSerial() {
 
         int timeout = 0;
         while(WiFi.status() != WL_CONNECTED && timeout < 100) {
+        while(WiFi.status() != WL_CONNECTED && timeout < 100) {
           delay(100);
           timeout++;
         }
@@ -464,6 +471,7 @@ bool configureWiFiViaSerial() {
         if(WiFi.status() == WL_CONNECTED) {
           printToAllPorts("Successfully connected to Wifi. IP Address: " + WiFi.localIP().toString());
           return true;
+        } else {
         } else {
           Serial.println("connection failed");
           return false;
@@ -476,8 +484,11 @@ bool configureWiFiViaSerial() {
 
 void setupWiFi() {
   // Keep original logic
+void setupWiFi() {
+  // Keep original logic
 }
 
+void startWifiManager() {
 void startWifiManager() {
 #ifdef I2C_EEPROM_ADDRESS
   i2c_eeprom_write_byte(EEPROM_WIFI_MANAGER, false);
@@ -512,13 +523,13 @@ void startWifiManager() {
 #endif
 }
 
-void resetWifiManager()
-{
+void resetWifiManager() {
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   esp_wifi_init(&cfg);
   delay(2000);
   if (esp_wifi_restore() != ESP_OK) {
     PTLF("\nWiFi is not initialized by esp_wifi_init ");
+  } else {
   } else {
     PTLF("\nWiFi Configurations Cleared!");
   }
