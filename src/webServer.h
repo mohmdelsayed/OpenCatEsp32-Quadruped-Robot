@@ -438,57 +438,11 @@ bool connectWifi(String ssid, String password)
   if (WiFi.status() == WL_CONNECTED) {
     return true;
   } else {
-  } else {
     Serial.println("connection failed");
     return false;
   }
 }
 
-bool configureWiFiViaSerial() {
-  if(Serial.available()) {
-bool configureWiFiViaSerial() {
-  if(Serial.available()) {
-    String input = Serial.readStringUntil('\n');
-    if(input.startsWith("wifi%")) {
-    if(input.startsWith("wifi%")) {
-      int firstDelimiter = input.indexOf('%', 5);
-      int secondDelimiter = input.indexOf('%', firstDelimiter + 1);
-
-      if(firstDelimiter != -1 && secondDelimiter != -1) {
-      if(firstDelimiter != -1 && secondDelimiter != -1) {
-        ssid = input.substring(5, firstDelimiter);
-        password = input.substring(firstDelimiter + 1, secondDelimiter);
-
-        WiFi.begin(ssid.c_str(), password.c_str());
-
-        int timeout = 0;
-        while(WiFi.status() != WL_CONNECTED && timeout < 100) {
-        while(WiFi.status() != WL_CONNECTED && timeout < 100) {
-          delay(100);
-          timeout++;
-        }
-
-        if(WiFi.status() == WL_CONNECTED) {
-          printToAllPorts("Successfully connected to Wifi. IP Address: " + WiFi.localIP().toString());
-          return true;
-        } else {
-        } else {
-          Serial.println("connection failed");
-          return false;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-void setupWiFi() {
-  // Keep original logic
-void setupWiFi() {
-  // Keep original logic
-}
-
-void startWifiManager() {
 void startWifiManager() {
 #ifdef I2C_EEPROM_ADDRESS
   i2c_eeprom_write_byte(EEPROM_WIFI_MANAGER, false);
@@ -529,7 +483,6 @@ void resetWifiManager() {
   delay(2000);
   if (esp_wifi_restore() != ESP_OK) {
     PTLF("\nWiFi is not initialized by esp_wifi_init ");
-  } else {
   } else {
     PTLF("\nWiFi Configurations Cleared!");
   }

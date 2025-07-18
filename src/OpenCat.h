@@ -88,7 +88,7 @@ String uniqueName = "";
 #define BIRTHMARK '@'  // Send '!' token to reset the birthmark in the EEPROM so that the robot will know to restart and reset
 #define BT_BLE  // toggle Bluetooth Low Energy (BLE）
 #define BT_SSP  // toggle Bluetooth Secure Simple Pairing (BT_SSP)
-// #define WEB_SERVER // toggle web server
+#define WEB_SERVER // toggle web server
 #ifndef VT
 #define GYRO_PIN  // toggle the Inertia Measurement Unit (IMU), i.e. the gyroscope
 #endif
@@ -613,9 +613,6 @@ int balanceSlope[2] = {1, 1};  // roll, pitch
 #include "bleClient.h"
 #endif
 #include "io.h"
-#ifdef WEB_SERVER
-#include "webServer.h"
-#endif
 #ifdef GYRO_PIN
 #include "imu.h"
 #endif
@@ -625,9 +622,11 @@ int balanceSlope[2] = {1, 1};  // roll, pitch
 #include "espServo.h"
 #include "motion.h"
 #include "randomMind.h"
-
 #include "skill.h"
 #include "moduleManager.h"
+#ifdef WEB_SERVER
+#include "webServer.h"
+#endif
 #ifdef NEOPIXEL_PIN
 #include "led.h"
 #endif

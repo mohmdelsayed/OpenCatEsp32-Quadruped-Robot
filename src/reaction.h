@@ -1466,7 +1466,7 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
   }
 #endif
 #ifdef CAMERA
-      if (cameraPrintQ == 2)
+  if (cameraPrintQ == 2)
   {
     showRecognitionResult(xCoord, yCoord, width, height);
     PTL();

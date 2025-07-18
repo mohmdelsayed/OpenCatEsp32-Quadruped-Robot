@@ -25,6 +25,9 @@ SoftwareSerial mySerial(UART_RX2, UART_TX2);
 #endif
 #endif
 
+TaskHandle_t TASK_HandleCamera = NULL;
+bool cameraTaskActiveQ = 0;
+
 bool detectedObjectQ = false;
 bool cameraReactionQ = true;
 bool updateCoordinateLock = false;
@@ -214,6 +217,7 @@ bool cameraSetup() {
 }
 
 void showRecognitionResult(int xCoord, int yCoord, int width, int height = -1) {
+  if(!cameraTaskActiveQ) return;
   printToAllPorts(xCoord - imgRangeX / 2.0, false);  // get vision result: x axes value
   printToAllPorts('\t', false);
   printToAllPorts(yCoord - imgRangeY / 2.0, false);  // get vision result: y axes value
@@ -230,9 +234,6 @@ void showRecognitionResult(int xCoord, int yCoord, int width, int height = -1) {
 // #define WALK  //let the robot move its body to follow people rather than sitting at the original position
 // it works the best on the table so the robot doesn't need to loop upward.
 // #define ROTATE
-
-TaskHandle_t TASK_HandleCamera = NULL;
-bool cameraTaskActiveQ = 0;
 
 void cameraBehavior(int xCoord, int yCoord, int width) {
   if (cameraReactionQ) {
@@ -715,7 +716,7 @@ void read_GroveVision() {
       //     Serial.println(AI.boxes()[i].h);
       //   }
       // }
-      if (cameraPrintQ == 2) 
+      if (cameraPrintQ == 2 && cameraTaskActiveQ) 
       {
         FPS();
       }
