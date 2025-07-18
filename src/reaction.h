@@ -573,16 +573,16 @@ void reaction()
 #endif
       break;
     }
-    case T_PAUSE:
-    {
-      tStep = !tStep;            // tStep can be -1
-      token = tStep ? 'p' : 'P'; // P for pause activated
-      if (tStep)
-        token = T_SKILL;
-      else
-        shutServos();
-      break;
-    }
+      case T_PAUSE:
+        {
+          tStep = !tStep;             // tStep can be -1
+          token = tStep ? 'p' : 'P';  // P for pause activated
+          if (tStep)
+            token = T_SKILL;
+          else
+            shutServos();
+          break;
+        }
 #ifdef VOLTAGE
     case T_POWER:
     {

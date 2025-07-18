@@ -666,10 +666,10 @@ int balanceSlope[2] = {1, 1}; // roll, pitch
 #ifdef BT_CLIENT
 #include "bleClient.h"
 #endif
+#include "io.h"
 #ifdef WEB_SERVER
 #include "webServer.h"
 #endif
-#include "io.h"
 #ifdef GYRO_PIN
 #include "imu.h"
 #endif
