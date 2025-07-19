@@ -2485,19 +2485,30 @@ ${code}
           serialBuffer += text; // 添加到serialBuffer
 
           // 监听特定格式的输出：类似 "=\r\n4894\r\nR\r\n" 的格式
-          // 检查是否包含 "=\r\n" 开头和 "\r\nR\r\n" 结尾的模式
+          // 改进的数据解析逻辑，防止数据分割问题
           const patternMatch = linesText.match(/=\r\n([^\r\n]+)\r\n[a-zA-Z]{1}\r\n/);
           if (patternMatch)
           {
             // 提取第二行内容（第一行是"="，第二行是数字，第三行是"R"）
             const secondLine = patternMatch[1];
-            addConsoleMessage(secondLine);
+
+            // 验证数据完整性：确保是纯数字
+            if (/^\d+$/.test(secondLine))
+            {
+              addConsoleMessage(secondLine);
+            } else
+            {
+              console.warn('检测到不完整的传感器数据:', secondLine);
+              // 不输出不完整的数据，等待完整数据包
+            }
           }
 
-          // 如果console缓冲区过大，防止内存泄漏
-          if (serialBuffer.length > 10000)
+          // 改进的缓冲区管理，防止内存泄漏和数据丢失
+          if (serialBuffer.length > 20000) // 增加缓冲区大小
           {
-            serialBuffer = serialBuffer.substring(serialBuffer.length - 5000);
+            // 保留最后10000个字符，确保不丢失重要数据
+            serialBuffer = serialBuffer.substring(serialBuffer.length - 10000);
+            console.warn('串口缓冲区已清理，保留最新数据');
           }
 
           for (let line of lines.reverse())

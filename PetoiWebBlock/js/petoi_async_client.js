@@ -9,24 +9,24 @@ class PetoiAsyncClient
     constructor(baseUrl = null)
     {
         this.baseUrl = baseUrl || `ws://${window.location.hostname}:81`;
-        this.taskTimeout = 30000; // 30秒超时
+        this.taskTimeout = 60000; // 60秒超时（增加超时时间以处理长时间传感器数据读取）
         this.ws = null;
         this.connected = false;
         this.pendingTasks = new Map();
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
-        this.reconnectDelay = 1000;
+        this.reconnectDelay = 500; // 减少初始重连延迟
         this.heartbeatInterval = null;
         this.heartbeatTimeout = null;
-        this.heartbeatIntervalMs = 4000;  // 4秒发送一次心跳（快速响应）
-        this.heartbeatTimeoutMs = 15000;  // 15秒没有响应就重连（快速检测）
+        this.heartbeatIntervalMs = 3000;  // 3秒发送一次心跳（更频繁的心跳）
+        this.heartbeatTimeoutMs = 10000;  // 10秒没有响应就重连（更快的检测）
         this.lastHeartbeatTime = 0;       // 记录最后一次心跳时间
         this.eventTarget = new EventTarget();
         this.clientId = Date.now().toString(); // 唯一客户端ID
         
         // 连接健康检查
         this.healthCheckInterval = null;
-        this.healthCheckIntervalMs = 10000; // 10秒检查一次连接健康状态（快速检测）
+        this.healthCheckIntervalMs = 5000; // 5秒检查一次连接健康状态（更频繁的检测）
         this.autoReconnect = true; // 自动重连开关
         this.connectionTimeout = 10000; // 连接超时10秒（快速连接）
         
