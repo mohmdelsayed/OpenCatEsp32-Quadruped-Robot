@@ -189,7 +189,7 @@ void dealWithExceptions() {
     config.putBool("WifiManager", true);  // default is false
 #endif
     PTLF("The robot will reboot and use Wifi manager.");
-    PTLF("Hold the BOOT key if you want to clear the previous Wifi credentials.\n**********\n\n");
+    PTLF("Hold the BOOT key and count down 10 if you want to clear the previous Wifi credentials.\n**********\n\n");
     int wifiCountdown = 10;
     while (digitalRead(0) == LOW && wifiCountdown) {
       delay(200);
@@ -456,7 +456,7 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
         printToAllPorts(WiFi.localIP());
         PTLF("Web server should already be running");
         PTLF("Press the BOOT key to reboot and use Wifi manager.");
-        PTLF("Hold the BOOT key if you want to clear the previous Wifi credentials.");
+        PTLF("Hold the BOOT key and count down 10 if you want to clear the previous Wifi credentials.");
       }
       break;
     }

@@ -66,6 +66,8 @@
                 data-i18n="showTimestamp">Timestamp</button>
               <button id="showSentCommandsBtn" onclick="toggleShowSentCommands()" class="toggle-button"
                 data-i18n="showSentCommands">Show Commands</button>
+              <button id="showDebugBtn" onclick="toggleShowDebug()" class="toggle-button"
+                data-i18n="showDebug">Debug</button>
               <button onclick="clearConsole()" class="clear-button" data-i18n="clearLog">Clear Log</button>
             </div>
           </div>
@@ -129,6 +131,144 @@
       const seconds = String(now.getSeconds()).padStart(2, '0');
       const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
       return `[${hours}:${minutes}:${seconds}.${milliseconds}]`;
+    }
+
+    // 加载配置文件
+    async function loadConfig()
+    {
+      try
+      {
+        // 首先尝试从localStorage加载配置
+        const localStorageConfig = localStorage.getItem('petoiConfig');
+        if (localStorageConfig)
+        {
+          try
+          {
+            const parsedConfig = JSON.parse(localStorageConfig);
+            config = { ...config, ...parsedConfig };
+            console.log('Configuration loaded from localStorage:', config);
+            return; // 如果从localStorage成功加载，就不需要从文件加载了
+          } catch (parseError)
+          {
+            console.warn('Failed to parse localStorage config:', parseError);
+            // 如果解析失败，继续尝试从文件加载
+          }
+        }
+
+        // 如果localStorage中没有配置或解析失败，使用默认配置
+        console.log('No localStorage config found, using default configuration');
+      } catch (error)
+      {
+        console.warn('Failed to load config, using defaults:', error);
+      }
+    }
+
+    // 保存配置文件
+    async function saveConfig()
+    {
+      try
+      {
+        // 更新连接历史
+        if (currentDeviceIP && currentDeviceIP !== config.lastKnownIP)
+        {
+          config.lastKnownIP = currentDeviceIP;
+          config.lastConnectedTime = new Date().toISOString();
+
+          // 添加到连接历史（最多保存10个）
+          if (!config.connectionHistory.includes(currentDeviceIP))
+          {
+            config.connectionHistory.unshift(currentDeviceIP);
+            config.connectionHistory = config.connectionHistory.slice(0, 10);
+          }
+        }
+
+        // 保存到localStorage，这样页面刷新后配置不会丢失
+        try
+        {
+          localStorage.setItem('petoiConfig', JSON.stringify(config));
+          console.log('Configuration saved to localStorage:', config);
+        } catch (localStorageError)
+        {
+          console.warn('Failed to save to localStorage:', localStorageError);
+        }
+
+        // 注意：由于浏览器安全限制，无法直接写入文件
+        // 这里只是更新内存中的配置，实际保存需要服务器端支持
+        console.log('Configuration updated:', config);
+      } catch (error)
+      {
+        console.error('Failed to save config:', error);
+      }
+    }
+
+    // 尝试使用配置的IP地址连接
+    async function tryConnectWithConfigIP()
+    {
+      if (!config.lastKnownIP)
+      {
+        console.log('No configured IP address available');
+        return false;
+      }
+
+      // 如果当前IP就是配置的IP，说明已经连接成功，不需要重复连接
+      if (currentDeviceIP === config.lastKnownIP)
+      {
+        console.log(`Already connected to configured IP: ${config.lastKnownIP}`);
+
+        // 确保按钮显示正确的IP地址
+        const quickConnectBtn = document.getElementById('quickConnectBtn');
+        if (quickConnectBtn && quickConnectBtn.textContent !== currentDeviceIP)
+        {
+          quickConnectBtn.textContent = currentDeviceIP;
+          quickConnectBtn.style.backgroundColor = '#4CAF50';
+          quickConnectBtn.setAttribute('data-connected', 'true');
+          console.log(`Updated Quick Connect button to show IP: ${currentDeviceIP}`);
+        }
+
+        return true;
+      }
+
+      console.log(`Trying to connect with configured IP: ${config.lastKnownIP}`);
+
+      try
+      {
+        // 尝试使用配置的IP地址创建WebSocket连接
+        const testClient = new PetoiAsyncClient(`ws://${config.lastKnownIP}:81`);
+        await testClient.connect();
+
+        // 如果连接成功，更新当前IP地址
+        currentDeviceIP = config.lastKnownIP;
+        console.log(`Successfully connected with configured IP: ${currentDeviceIP}`);
+
+        // 更新Quick Connect按钮状态
+        const quickConnectBtn = document.getElementById('quickConnectBtn');
+        if (quickConnectBtn)
+        {
+          quickConnectBtn.textContent = currentDeviceIP;
+          quickConnectBtn.style.backgroundColor = '#4CAF50';
+          quickConnectBtn.setAttribute('data-connected', 'true');
+        }
+
+        // 更新配置中的连接时间并保存
+        config.lastConnectedTime = new Date().toISOString();
+        await saveConfig();
+        console.log('Configuration updated with successful connection:', config);
+
+        // 更新make_connection积木中的IP地址
+        const makeConnectionBlocks = workspace.getBlocksByType('make_connection');
+        if (makeConnectionBlocks && makeConnectionBlocks.length > 0)
+        {
+          // 更新第一个make_connection积木块的IP_ADDRESS字段
+          makeConnectionBlocks[0].setFieldValue(currentDeviceIP, 'IP_ADDRESS');
+          console.log(`Updated make_connection block IP to: ${currentDeviceIP}`);
+        }
+
+        return true;
+      } catch (error)
+      {
+        console.log(`Failed to connect with configured IP ${config.lastKnownIP}:`, error);
+        return false;
+      }
     }
 
     // 更新自定义积木的定义
@@ -413,6 +553,9 @@
         document.getElementById('zhBtn').classList.toggle('active', false);
         document.getElementById('enBtn').classList.toggle('active', true);
         document.getElementById('jaBtn').classList.toggle('active', false);
+
+        // 加载配置文件
+        loadConfig();
       });
 
       // 添加控制台和串口输出区域的键盘复制功能
@@ -1505,13 +1648,54 @@ ${code}
       }
     }
 
+    // 切换是否显示debug信息
+    function toggleShowDebug()
+    {
+      showDebug = !showDebug;
+      // 更新按钮样式
+      const btn = document.getElementById('showDebugBtn');
+      if (showDebug)
+      {
+        btn.classList.add('active');
+      } else
+      {
+        btn.classList.remove('active');
+      }
+    }
+
     // 只重写 console.log
     const originalLog = console.log;
     console.log = function ()
     {
+      // 检查是否为debug信息
+      const message = Array.from(arguments).join(' ');
+      const isDebugMessage = isDebugInfo(message);
+
+      // 如果是debug信息且debug开关关闭，则不显示
+      if (isDebugMessage && !showDebug)
+      {
+        originalLog.apply(console, arguments);
+        return;
+      }
+
       addConsoleMessage(arguments);
       originalLog.apply(console, arguments);
     };
+
+    // 检查是否为debug信息的函数
+    function isDebugInfo(message)
+    {
+      const debugPatterns = [
+        /\[Heartbeat\]/,
+        /handleMessage/,
+        /message type/,
+        /send message/,
+        /Program ended/,
+        /\[WebSocket\]/
+      ];
+
+      return debugPatterns.some(pattern => pattern.test(message));
+    }
 
     // 添加串口通信相关的JavaScript代码
     let port = null;
@@ -1525,6 +1709,15 @@ ${code}
     // 设备IP地址
     let currentDeviceIP = '192.168.4.1'; // 默认IP地址
 
+    // 配置文件相关
+    let config = {
+      lastKnownIP: '192.168.4.1',
+      lastConnectedTime: '',
+      connectionHistory: [],
+      autoConnect: true,
+      connectionTimeout: 5000
+    };
+
     // 添加命令历史记录相关变量
     let commandHistory = [];
     let historyIndex = -1;
@@ -1532,6 +1725,9 @@ ${code}
 
     // 是否显示发送的命令
     let showSentCommands = false;
+
+    // 是否显示debug信息
+    let showDebug = false;
 
     let ipCheckTimer = null;
     let lastPartialIP = null;
@@ -1900,7 +2096,7 @@ ${code}
           {
             // 显示提示窗口
             alert(getText("serialPortBusy"));
-            return;
+            throw new Error('Serial port busy');
           } else
           {
             // 其他错误，继续抛出
@@ -1976,8 +2172,30 @@ ${code}
       } catch (error)
       {
         console.error(getText("serialConnectionError"), error);
-        // 连接失败时重置按钮样式
-        resetQuickConnectButton();
+        // 连接失败时重置所有串口相关变量
+        port = null;
+        writer = null;
+        reader = null;
+        // 只有在没有WebSocket连接时才重置Quick Connect按钮
+        // 如果有currentDeviceIP，说明可能还有WebSocket连接，不重置按钮
+        if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
+        {
+          resetQuickConnectButton();
+          console.log('Reset Quick Connect button (no WebSocket connection)');
+        } else
+        {
+          // 如果有IP地址，保持按钮显示IP
+          const quickConnectBtn = document.getElementById('quickConnectBtn');
+          if (quickConnectBtn)
+          {
+            quickConnectBtn.textContent = currentDeviceIP;
+            quickConnectBtn.style.backgroundColor = '#4CAF50';
+            quickConnectBtn.setAttribute('data-connected', 'true');
+          }
+          console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
+        }
+        // 抛出异常，让调用者知道连接失败
+        throw error;
       }
     }
 
@@ -1985,20 +2203,64 @@ ${code}
     {
       try
       {
+        // 添加超时处理，防止硬件断开时卡住
+        const timeout = 3000; // 3秒超时
+
         if (reader)
         {
-          await reader.cancel();
-          reader = null;
+          try
+          {
+            // 使用Promise.race添加超时
+            await Promise.race([
+              reader.cancel(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Reader cancel timeout')), timeout))
+            ]);
+            console.log('Reader cancelled successfully');
+          } catch (readerError)
+          {
+            console.warn('Failed to cancel reader:', readerError);
+          } finally
+          {
+            reader = null;
+          }
         }
+
         if (writer)
         {
-          await writer.close();
-          writer = null;
+          try
+          {
+            // 使用Promise.race添加超时
+            await Promise.race([
+              writer.close(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Writer close timeout')), timeout))
+            ]);
+            console.log('Writer closed successfully');
+          } catch (writerError)
+          {
+            console.warn('Failed to close writer:', writerError);
+          } finally
+          {
+            writer = null;
+          }
         }
+
         if (port)
         {
-          await port.close();
-          port = null;
+          try
+          {
+            // 使用Promise.race添加超时
+            await Promise.race([
+              port.close(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Port close timeout')), timeout))
+            ]);
+            console.log('Port closed successfully');
+          } catch (portError)
+          {
+            console.warn('Failed to close port:', portError);
+          } finally
+          {
+            port = null;
+          }
         }
 
         // 更新UI状态
@@ -2026,8 +2288,22 @@ ${code}
           serialTitle.textContent = getText("serialOutput");
         }
 
-        // 重置Quick Connect按钮样式
-        resetQuickConnectButton();
+        // 只有在没有WebSocket连接时才重置Quick Connect按钮
+        // 如果有currentDeviceIP，说明可能还有WebSocket连接，不重置按钮
+        if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
+        {
+          resetQuickConnectButton();
+        } else
+        {
+          // 如果有IP地址，保持按钮显示IP
+          const quickConnectBtn = document.getElementById('quickConnectBtn');
+          if (quickConnectBtn)
+          {
+            quickConnectBtn.textContent = currentDeviceIP;
+            quickConnectBtn.style.backgroundColor = '#4CAF50';
+            quickConnectBtn.setAttribute('data-connected', 'true');
+          }
+        }
 
         // 强制重新调整工作区大小
         setTimeout(function ()
@@ -2049,17 +2325,30 @@ ${code}
       // 检查串口是否已连接
       if (!port)
       {
-        // 如果串口未连接，先尝试连接串口
-        await openSerialPort();
-      }
+        try
+        {
+          // 如果串口未连接，先尝试连接串口
+          await openSerialPort();
+        } catch (error)
+        {
+          console.log('Serial port connection failed, trying configured IP...');
 
-      if (!writer)
+          // 串口连接失败，尝试使用配置文件中的IP地址
+          const connectedWithConfig = await tryConnectWithConfigIP();
+
+          if (!connectedWithConfig)
+          {
+            // 如果配置的IP地址也连接失败，显示WiFi配置对话框
+            console.log('Both serial and configured IP failed, showing WiFi config dialog');
+            showWifiConfigDialog();
+          }
+        }
+      }
+      else if (writer)
       {
-        return;
+        // 如果串口已连接但需要重新获取IP地址，才调用 sendWifiCommand()
+        await sendWifiCommand();
       }
-
-      // 自动发送'w'指令获取IP地址
-      await sendWifiCommand();
     }
 
     function closeWifiDialog()
@@ -2265,6 +2554,98 @@ ${code}
       } catch (error)
       {
         console.error(getText("serialReadError"), error);
+
+        // 检测硬件断开连接
+        if (error.name === 'NetworkError' ||
+          error.message.includes('failed to read') ||
+          error.message.includes('device disconnected') ||
+          error.message.includes('connection lost'))
+        {
+          console.log('Hardware disconnected, cleaning up serial connection...');
+
+          // 重置串口相关变量
+          reader = null;
+          writer = null;
+          port = null;
+
+          // 更新UI状态，隐藏串口界面
+          const serialInterface = document.getElementById('serialInterface');
+          if (serialInterface)
+          {
+            serialInterface.style.display = 'none';
+          }
+
+          // 移除connected类，恢复串口容器默认样式
+          const serialContainer = document.getElementById('serialContainer');
+          if (serialContainer)
+          {
+            serialContainer.classList.remove('connected');
+          }
+
+          // 隐藏分隔线
+          const divider = document.getElementById('console-serial-divider');
+          if (divider)
+          {
+            divider.style.display = 'none';
+          }
+
+          // 调整控制台和串口区域的比例
+          const consoleWindow = document.getElementById('consoleWindow');
+          if (consoleWindow)
+          {
+            consoleWindow.style.flex = '90';
+          }
+          if (serialContainer)
+          {
+            serialContainer.style.flex = '10';
+          }
+
+          // 更新按钮状态
+          const openSerialBtn = document.getElementById('openSerialBtn');
+          const showSerialTimestampBtn = document.getElementById('showSerialTimestampBtn');
+          const closeSerialBtn = document.getElementById('closeSerialBtn');
+          const clearSerialBtn = document.getElementById('clearSerialBtn');
+
+          if (openSerialBtn) openSerialBtn.style.display = 'inline-flex';
+          if (showSerialTimestampBtn) showSerialTimestampBtn.style.display = 'none';
+          if (closeSerialBtn) closeSerialBtn.style.display = 'none';
+          if (clearSerialBtn) clearSerialBtn.style.display = 'none';
+
+          // 重置串口监视器标题
+          const serialTitle = document.getElementById('serialOutputTitle');
+          if (serialTitle)
+          {
+            serialTitle.textContent = getText("serialOutput");
+          }
+
+          // 只有在没有WebSocket连接时才重置Quick Connect按钮
+          // 如果有currentDeviceIP，说明可能还有WebSocket连接，不重置按钮
+          if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
+          {
+            resetQuickConnectButton();
+            console.log('Reset Quick Connect button (no WebSocket connection)');
+          } else
+          {
+            // 如果有IP地址，保持按钮显示IP
+            const quickConnectBtn = document.getElementById('quickConnectBtn');
+            if (quickConnectBtn)
+            {
+              quickConnectBtn.textContent = currentDeviceIP;
+              quickConnectBtn.style.backgroundColor = '#4CAF50';
+              quickConnectBtn.setAttribute('data-connected', 'true');
+            }
+            console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
+          }
+
+          // 强制重新调整工作区大小
+          setTimeout(function ()
+          {
+            resizeBlocklyWorkspace();
+            repositionUndoRedoButtons();
+          }, 100);
+
+          console.log('Serial connection cleanup completed due to hardware disconnect');
+        }
       }
     }
 
@@ -2508,6 +2889,9 @@ ${code}
 
           // 如果获取到IP地址，关闭可能存在的WiFi配置对话框
           closeWifiDialog();
+
+          // 保存到配置文件
+          await saveConfig();
         }
       } else
       {
@@ -2740,6 +3124,13 @@ ${code}
       // 控制台占据大部分空间，串口区域只占据底部一小部分
       consoleWindow.style.flex = '90';
       serialContainer.style.flex = '10';
+
+      // 初始化debug开关状态
+      const debugBtn = document.getElementById('showDebugBtn');
+      if (debugBtn)
+      {
+        showDebug = debugBtn.classList.contains('active');
+      }
 
       let isResizing = false;
       let initialX, initialWidth;
