@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32串口检测测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .success-box {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .error-box {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #1976d2;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .port-list {
+            margin: 15px 0;
+        }
+
+        .port-item {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+
+        .chip-info {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>ESP32串口检测测试</h1>
+
+        <div class="info-box">
+            <h3>系统信息</h3>
+            <p><strong>操作系统:</strong> <span id="os-info">检测中...</span></p>
+            <p><strong>浏览器:</strong> <span id="browser-info">检测中...</span></p>
+            <p><strong>Web Serial API支持:</strong> <span id="serial-support">检测中...</span></p>
+        </div>
+
+        <div class="info-box">
+            <h3>支持的ESP32串口芯片</h3>
+            <ul>
+                <li>CH340 (Vendor: 0x1a86, Product: 0x7523)</li>
+                <li>CH343 (Vendor: 0x1a86, Product: 0x55d4)</li>
+                <li>CP2102 (Vendor: 0x10c4, Product: 0xea60)</li>
+                <li>CP2102变种 (Vendor: 0x10c4, Product: 0xea61)</li>
+                <li>CH340变种 (Vendor: 0x1a86, Product: 0x5523)</li>
+            </ul>
+        </div>
+
+        <div>
+            <button onclick="detectSystem()">检测系统</button>
+            <button onclick="checkSerialSupport()">检查串口支持</button>
+            <button onclick="listSerialPorts()">列出串口</button>
+            <button onclick="testESP32Detection()">测试ESP32检测</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // ESP32开发板使用的USB串口芯片配置
+        const ESP32_USB_CHIPS = [
+            { vendorId: 0x1a86, productId: 0x7523, name: 'CH340' },
+            { vendorId: 0x1a86, productId: 0x55d4, name: 'CH343' },
+            { vendorId: 0x10c4, productId: 0xea60, name: 'CP2102' },
+            { vendorId: 0x10c4, productId: 0xea61, name: 'CP2102' },
+            { vendorId: 0x1a86, productId: 0x5523, name: 'CH340' },
+        ];
+
+        // 系统检测函数
+        function detectOperatingSystem()
+        {
+            const userAgent = navigator.userAgent;
+            const platform = navigator.platform;
+
+            if (userAgent.includes('Chrome OS') || userAgent.includes('CrOS'))
+            {
+                return 'chromebook';
+            } else if (platform.includes('Mac'))
+            {
+                return 'mac';
+            } else if (platform.includes('Win'))
+            {
+                return 'windows';
+            } else if (platform.includes('Linux'))
+            {
+                return 'linux';
+            } else
+            {
+                return 'unknown';
+            }
+        }
+
+        // 检查串口是否为ESP32开发板使用的芯片
+        function isESP32SerialPort(port)
+        {
+            try
+            {
+                const portInfo = port.getInfo();
+                if (!portInfo.usbVendorId || !portInfo.usbProductId)
+                {
+                    return false;
+                }
+
+                return ESP32_USB_CHIPS.some(chip =>
+                    chip.vendorId === portInfo.usbVendorId &&
+                    chip.productId === portInfo.usbProductId
+                );
+            } catch (error)
+            {
+                console.warn('无法获取串口信息:', error);
+                return false;
+            }
+        }
+
+        // 获取ESP32串口显示名称
+        function getESP32PortDisplayName(port)
+        {
+            try
+            {
+                const portInfo = port.getInfo();
+                const chip = ESP32_USB_CHIPS.find(chip =>
+                    chip.vendorId === portInfo.usbVendorId &&
+                    chip.productId === portInfo.usbProductId
+                );
+
+                const os = detectOperatingSystem();
+                let displayName = '';
+
+                if (os === 'windows')
+                {
+                    displayName = chip ? `${chip.name} ESP32` : 'ESP32 Serial';
+                } else if (os === 'mac' || os === 'linux')
+                {
+                    displayName = chip ? `${chip.name} (ESP32)` : 'ESP32 Serial';
+                } else
+                {
+                    displayName = chip ? `${chip.name} ESP32` : 'ESP32';
+                }
+
+                return displayName;
+            } catch (error)
+            {
+                console.warn('获取串口显示名称失败:', error);
+                return 'ESP32 Serial';
+            }
+        }
+
+        function detectSystem()
+        {
+            const os = detectOperatingSystem();
+            document.getElementById('os-info').textContent = os;
+            document.getElementById('browser-info').textContent = navigator.userAgent;
+
+            addResult(`系统检测完成: ${os}`, 'success');
+        }
+
+        function checkSerialSupport()
+        {
+            if ('serial' in navigator)
+            {
+                document.getElementById('serial-support').textContent = '支持';
+                addResult('Web Serial API 支持正常', 'success');
+            } else
+            {
+                document.getElementById('serial-support').textContent = '不支持';
+                addResult('Web Serial API 不支持，请使用Chrome浏览器', 'error');
+            }
+        }
+
+        async function listSerialPorts()
+        {
+            if (!('serial' in navigator))
+            {
+                addResult('Web Serial API 不支持', 'error');
+                return;
+            }
+
+            try
+            {
+                const ports = await navigator.serial.getPorts();
+                addResult(`找到 ${ports.length} 个已授权的串口`, 'info');
+
+                const portList = document.createElement('div');
+                portList.className = 'port-list';
+
+                if (ports.length === 0)
+                {
+                    portList.innerHTML = '<p>没有找到已授权的串口</p>';
+                } else
+                {
+                    ports.forEach((port, index) =>
+                    {
+                        const portItem = document.createElement('div');
+                        portItem.className = 'port-item';
+
+                        try
+                        {
+                            const portInfo = port.getInfo();
+                            const isESP32 = isESP32SerialPort(port);
+                            const displayName = getESP32PortDisplayName(port);
+
+                            portItem.innerHTML = `
+                                <strong>串口 ${index + 1}</strong><br>
+                                <span class="chip-info">
+                                    Vendor ID: 0x${portInfo.usbVendorId?.toString(16) || 'N/A'}<br>
+                                    Product ID: 0x${portInfo.usbProductId?.toString(16) || 'N/A'}<br>
+                                    显示名称: ${displayName}<br>
+                                    ESP32设备: ${isESP32 ? '是' : '否'}
+                                </span>
+                            `;
+                        } catch (error)
+                        {
+                            portItem.innerHTML = `
+                                <strong>串口 ${index + 1}</strong><br>
+                                <span class="chip-info">无法获取详细信息</span>
+                            `;
+                        }
+
+                        portList.appendChild(portItem);
+                    });
+                }
+
+                document.getElementById('results').appendChild(portList);
+
+            } catch (error)
+            {
+                addResult(`获取串口列表失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testESP32Detection()
+        {
+            if (!('serial' in navigator))
+            {
+                addResult('Web Serial API 不支持', 'error');
+                return;
+            }
+
+            try
+            {
+                const ports = await navigator.serial.getPorts();
+                const esp32Ports = ports.filter(port => isESP32SerialPort(port));
+
+                addResult(`ESP32检测结果: 找到 ${esp32Ports.length} 个ESP32串口设备`, 'success');
+
+                if (esp32Ports.length > 0)
+                {
+                    esp32Ports.forEach((port, index) =>
+                    {
+                        const displayName = getESP32PortDisplayName(port);
+                        addResult(`ESP32设备 ${index + 1}: ${displayName}`, 'success');
+                    });
+                }
+
+            } catch (error)
+            {
+                addResult(`ESP32检测失败: ${error.message}`, 'error');
+            }
+        }
+
+        function addResult(message, type)
+        {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = type === 'error' ? 'error-box' :
+                type === 'success' ? 'success-box' : 'info-box';
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        // 页面加载时自动检测
+        window.addEventListener('load', () =>
+        {
+            detectSystem();
+            checkSerialSupport();
+        });
+    </script>
+</body>
+
+</html>
