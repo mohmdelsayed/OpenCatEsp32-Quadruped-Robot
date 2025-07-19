@@ -18,11 +18,21 @@ class PetoiAsyncClient
         this.reconnectDelay = 1000;
         this.heartbeatInterval = null;
         this.heartbeatTimeout = null;
-        this.heartbeatIntervalMs = 10000; // 10秒发送一次心跳
-        this.heartbeatTimeoutMs = 15000;  // 15秒没有响应就重连
+        this.heartbeatIntervalMs = 4000;  // 4秒发送一次心跳（快速响应）
+        this.heartbeatTimeoutMs = 15000;  // 15秒没有响应就重连（快速检测）
         this.lastHeartbeatTime = 0;       // 记录最后一次心跳时间
         this.eventTarget = new EventTarget();
         this.clientId = Date.now().toString(); // 唯一客户端ID
+        
+        // 连接健康检查
+        this.healthCheckInterval = null;
+        this.healthCheckIntervalMs = 10000; // 10秒检查一次连接健康状态（快速检测）
+        this.autoReconnect = true; // 自动重连开关
+        this.connectionTimeout = 10000; // 连接超时10秒（快速连接）
+        
+        // 连接状态监控
+        this.lastActivityTime = 0; // 最后活动时间
+        this.connectionStartTime = 0; // 连接开始时间
     }
 
     /**
@@ -35,20 +45,23 @@ class PetoiAsyncClient
 
         // 设置心跳定时器
         this.heartbeatInterval = setInterval(() => {
-            if (this.connected) {
+            if (this.connected && this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.sendHeartbeat();
                 
                 // 设置心跳超时
                 this.heartbeatTimeout = setTimeout(() => {
                     console.log(getText('heartbeatTimeout'));
-                    this.disconnect();
+                    this.handleConnectionFailure('Heartbeat timeout');
                 }, this.heartbeatTimeoutMs);
             }
         }, this.heartbeatIntervalMs);
-        // 延时1秒后发送心跳
-        // setTimeout(() => {
-        //     this.sendHeartbeat();
-        // }, 1000);
+        
+        // 立即发送第一个心跳
+        setTimeout(() => {
+            if (this.connected) {
+                this.sendHeartbeat();
+            }
+        }, 1000);
     }
 
     /**
@@ -68,35 +81,147 @@ class PetoiAsyncClient
     }
 
     /**
+     * 启动连接健康检查
+     */
+    startHealthCheck()
+    {
+        this.stopHealthCheck();
+        
+        this.healthCheckInterval = setInterval(() => {
+            if (this.connected && this.ws) {
+                this.checkConnectionHealth();
+            }
+        }, this.healthCheckIntervalMs);
+    }
+
+    /**
+     * 停止连接健康检查
+     */
+    stopHealthCheck()
+    {
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+            this.healthCheckInterval = null;
+        }
+    }
+
+    /**
+     * 检查连接健康状态
+     */
+    checkConnectionHealth()
+    {
+        if (!this.connected || !this.ws) {
+            return false;
+        }
+
+        // 检查WebSocket状态
+        if (this.ws.readyState !== WebSocket.OPEN) {
+            console.log('WebSocket not in OPEN state, attempting reconnect...');
+            this.handleConnectionFailure('WebSocket not open');
+            return false;
+        }
+
+        // 检查最后活动时间
+        const now = Date.now();
+        if (now - this.lastActivityTime > this.heartbeatTimeoutMs * 2) {
+            console.log('No activity detected, attempting reconnect...');
+            this.handleConnectionFailure('No activity detected');
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * 处理连接失败
+     */
+    handleConnectionFailure(reason)
+    {
+        console.log(`Connection failure: ${reason}`);
+        this.connected = false;
+        this.stopHeartbeat();
+        this.stopHealthCheck();
+        
+        if (this.autoReconnect) {
+            this.handleReconnect();
+        }
+        
+        // 触发连接失败事件
+        this.eventTarget.dispatchEvent(new CustomEvent('connectionFailed', {
+            detail: { reason: reason }
+        }));
+    }
+
+    /**
      * 连接到WebSocket服务器
      */
     async connect()
     {
         return new Promise((resolve, reject) => {
-            this.ws = new WebSocket(this.baseUrl);
+            // 如果已有连接，先断开
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
 
-            this.ws.onopen = () => {
-                this.connected = true;
-                this.reconnectAttempts = 0;
-                console.log(getText('websocketConnected'));
-                this.lastHeartbeatTime = Date.now();
-                resolve();
-            };
+            this.connectionStartTime = Date.now();
+            
+            try {
+                this.ws = new WebSocket(this.baseUrl);
 
-            this.ws.onclose = () => {
-                this.connected = false;
-                this.stopHeartbeat(); // 停止心跳
-                console.log(getText('websocketClosed'));
-            };
+                // 设置连接超时
+                const connectionTimeout = setTimeout(() => {
+                    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+                        console.log('Connection timeout');
+                        this.ws.close();
+                        reject(new Error('Connection timeout'));
+                    }
+                }, this.connectionTimeout);
 
-            this.ws.onerror = (error) => {
-                console.error(getText('websocketError'), error);
+                this.ws.onopen = () => {
+                    clearTimeout(connectionTimeout);
+                    this.connected = true;
+                    this.reconnectAttempts = 0;
+                    this.lastActivityTime = Date.now();
+                    console.log(getText('websocketConnected'));
+                    
+                    // 启动心跳和健康检查
+                    this.startHeartbeat();
+                    this.startHealthCheck();
+                    
+                    resolve();
+                };
+
+                this.ws.onclose = (event) => {
+                    clearTimeout(connectionTimeout);
+                    this.connected = false;
+                    this.stopHeartbeat();
+                    this.stopHealthCheck();
+                    
+                    console.log(getText('websocketClosed'), event.code, event.reason);
+                    
+                    // 如果不是正常关闭，尝试重连
+                    if (event.code !== 1000 && this.autoReconnect) {
+                        this.handleConnectionFailure('Connection closed unexpectedly');
+                    }
+                };
+
+                this.ws.onerror = (error) => {
+                    clearTimeout(connectionTimeout);
+                    console.error(getText('websocketError'), error);
+                    reject(error);
+                };
+
+                this.ws.onmessage = (event) => {
+                    this.lastActivityTime = Date.now();
+                    this.handleMessage(event.data);
+                };
+                
+            } catch (error) {
+                clearTimeout(connectionTimeout);
+                console.error('Failed to create WebSocket connection:', error);
                 reject(error);
-            };
-
-            this.ws.onmessage = (event) => {
-                this.handleMessage(event.data);
-            };
+            }
         });
     }
 
@@ -107,10 +232,23 @@ class PetoiAsyncClient
     {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
-            console.log(getText('reconnectAttempt').replace('{current}', this.reconnectAttempts).replace('{max}', this.maxReconnectAttempts));
-            setTimeout(() => this.connect(), this.reconnectDelay);
+            const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // 指数退避
+            console.log(getText('reconnectAttempt').replace('{current}', this.reconnectAttempts).replace('{max}', this.maxReconnectAttempts) + ` (delay: ${delay}ms)`);
+            
+            setTimeout(() => {
+                this.connect().catch(error => {
+                    console.error('Reconnect failed:', error);
+                    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                        this.handleReconnect();
+                    } else {
+                        console.error(getText('maxReconnectAttempts'));
+                        this.eventTarget.dispatchEvent(new CustomEvent('maxReconnectAttemptsReached'));
+                    }
+                });
+            }, delay);
         } else {
             console.error(getText('maxReconnectAttempts'));
+            this.eventTarget.dispatchEvent(new CustomEvent('maxReconnectAttemptsReached'));
         }
     }
 
@@ -119,7 +257,7 @@ class PetoiAsyncClient
      */
     sendHeartbeat()
     {
-        if (this.ws && this.connected) {
+        if (this.ws && this.connected && this.ws.readyState === WebSocket.OPEN) {
             const now = Date.now();
             const timeSinceLastHeartbeat = now - this.lastHeartbeatTime;
             console.log(getText('heartbeatSent').replace('{time}', timeSinceLastHeartbeat));
@@ -128,8 +266,15 @@ class PetoiAsyncClient
                 type: 'heartbeat',
                 timestamp: now
             };
-            this.ws.send(JSON.stringify(heartbeatMessage));
-            this.lastHeartbeatTime = now;
+            
+            try {
+                this.ws.send(JSON.stringify(heartbeatMessage));
+                this.lastHeartbeatTime = now;
+                this.lastActivityTime = now;
+            } catch (error) {
+                console.error('Failed to send heartbeat:', error);
+                this.handleConnectionFailure('Heartbeat send failed');
+            }
         }
     }
 
@@ -143,8 +288,11 @@ class PetoiAsyncClient
             // 清理数据中的特殊字符
             const cleanData = data.replace(/[\r\n\t\f\v]/g, ' ').trim();
             const message = JSON.parse(cleanData);
-            //print message type
             console.log('message type', message.type);
+            
+            // 更新最后活动时间
+            this.lastActivityTime = Date.now();
+            
             // 处理心跳响应
             if (message.type === 'heartbeat') {
                 const now = Date.now();
@@ -157,9 +305,18 @@ class PetoiAsyncClient
                 return;
             }
 
+            // 处理连接成功响应
+            if (message.type === 'connected') {
+                console.log('Connection confirmed by server');
+                return;
+            }
+
             // 处理错误消息
             if (message.error) {
                 console.error(getText('serverError'), message.error);
+                this.eventTarget.dispatchEvent(new CustomEvent('serverError', {
+                    detail: { error: message.error }
+                }));
                 return;
             }
 
@@ -172,7 +329,7 @@ class PetoiAsyncClient
                         task.onProgress && task.onProgress(message);
                         break;
                     case 'completed':
-                        if (message.results.length > 0) {
+                        if (message.results && message.results.length > 0) {
                             task.resolve(message.results);
                         } else {
                             task.reject(new Error("response no results"));
@@ -180,7 +337,7 @@ class PetoiAsyncClient
                         this.pendingTasks.delete(message.taskId);
                         break;
                     case 'error':
-                        task.reject(new Error(message.error));
+                        task.reject(new Error(message.error || 'Task failed'));
                         this.pendingTasks.delete(message.taskId);
                         break;
                 }
@@ -204,8 +361,19 @@ class PetoiAsyncClient
      */
     async sendCommand(command, timeout = this.taskTimeout)
     {
-        if (!this.connected) {
-            throw new Error(getText('notConnected'));
+        // 检查连接状态
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            // 尝试重新连接
+            if (this.autoReconnect) {
+                console.log('Connection lost, attempting reconnect before sending command...');
+                try {
+                    await this.connect();
+                } catch (error) {
+                    throw new Error(getText('notConnected') + ' (reconnect failed)');
+                }
+            } else {
+                throw new Error(getText('notConnected'));
+            }
         }
 
         // 将单个命令转换为命令数组
@@ -243,9 +411,19 @@ class PetoiAsyncClient
                     reject(error);
                 }
             });
+            
             const messageStr = JSON.stringify(message);
             console.log('send message', messageStr);
-            this.ws.send(messageStr);
+            
+            try {
+                this.ws.send(messageStr);
+                this.lastActivityTime = Date.now();
+            } catch (error) {
+                clearTimeout(timeoutId);
+                this.pendingTasks.delete(taskId);
+                this.handleConnectionFailure('Send command failed');
+                reject(error);
+            }
         });
     }
 
@@ -254,10 +432,13 @@ class PetoiAsyncClient
      */
     disconnect()
     {
+        this.autoReconnect = false; // 禁用自动重连
         this.stopHeartbeat(); // 停止心跳
+        this.stopHealthCheck(); // 停止健康检查
+        
         if (this.ws)
         {
-            this.ws.close();
+            this.ws.close(1000, 'Client disconnect'); // 正常关闭
             this.ws = null;
             this.connected = false;
         }
@@ -268,6 +449,26 @@ class PetoiAsyncClient
      */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * 获取连接状态
+     */
+    getConnectionStatus() {
+        return {
+            connected: this.connected,
+            readyState: this.ws ? this.ws.readyState : null,
+            reconnectAttempts: this.reconnectAttempts,
+            lastActivityTime: this.lastActivityTime,
+            connectionDuration: this.connectionStartTime ? Date.now() - this.connectionStartTime : 0
+        };
+    }
+
+    /**
+     * 启用/禁用自动重连
+     */
+    setAutoReconnect(enabled) {
+        this.autoReconnect = enabled;
     }
 }
 

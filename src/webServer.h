@@ -16,8 +16,13 @@ bool webServerConnected = false;
 // WebSocket客户端管理
 std::map<uint8_t, bool> connectedClients;
 std::map<uint8_t, unsigned long> lastHeartbeat; // 记录每个客户端的最后心跳时间
-const unsigned long HEARTBEAT_INTERVAL = 10000; // 心跳间隔10秒
-const unsigned long HEARTBEAT_TIMEOUT = 15000;  // 心跳超时15秒
+const unsigned long HEARTBEAT_INTERVAL = 5000;  // 心跳间隔5秒（快速响应）
+const unsigned long HEARTBEAT_TIMEOUT = 15000;  // 心跳超时15秒（快速检测）
+const uint8_t MAX_CLIENTS = 5; // 最大连接数限制
+
+// 连接健康检查
+unsigned long lastHealthCheckTime = 0;
+const unsigned long HEALTH_CHECK_INTERVAL = 10000; // 健康检查间隔10秒（快速检测）
 
 // 异步任务管理
 struct WebTask
@@ -48,6 +53,8 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
 void sendCameraData(int xCoord, int yCoord, int width, int height);
 void sendUltrasonicData(int distance);
 void clearWebTask(String taskId);
+void checkConnectionHealth();
+void sendSocketResponse(uint8_t clientId, String message);
 
 // 简单的 Base64 解码函数
 String base64Decode(String input) {
@@ -84,6 +91,47 @@ String base64Decode(String input) {
 String generateTaskId()
 {
   return String(millis()) + "_" + String(esp_random() % 1000);
+}
+
+// 发送响应到指定客户端
+void sendSocketResponse(uint8_t clientId, String message) {
+  if (connectedClients.find(clientId) != connectedClients.end() && connectedClients[clientId]) {
+    webSocket.sendTXT(clientId, message);
+  }
+}
+
+// 检查连接健康状态
+void checkConnectionHealth() {
+  unsigned long currentTime = millis();
+  
+  // 检查心跳超时
+  for (auto it = lastHeartbeat.begin(); it != lastHeartbeat.end();) {
+    uint8_t clientId = it->first;
+    unsigned long lastHeartbeatTime = it->second;
+    
+    if (currentTime - lastHeartbeatTime > HEARTBEAT_TIMEOUT) {
+      PTHL("Client heartbeat timeout, disconnecting: ", clientId);
+      
+      // 发送超时通知
+      sendSocketResponse(clientId, "{\"type\":\"error\",\"error\":\"Heartbeat timeout\"}");
+      
+      // 断开连接
+      webSocket.disconnect(clientId);
+      
+      // 清理客户端状态
+      connectedClients.erase(clientId);
+      it = lastHeartbeat.erase(it);
+      
+      // 如果当前任务属于这个客户端，需要处理
+      if (webTaskActive && currentWebTaskId != "" && 
+          webTasks.find(currentWebTaskId) != webTasks.end() && 
+          webTasks[currentWebTaskId].clientId == clientId) {
+        errorWebTask("Client disconnected due to heartbeat timeout");
+      }
+    } else {
+      ++it;
+    }
+  }
 }
 
 // 发送摄像头数据到所有连接的客户端
@@ -137,15 +185,35 @@ void sendUltrasonicData(int distance) {
 void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   switch(type) {
     case WStype_DISCONNECTED:
+      PTHL("WebSocket client disconnected: ", num);
+      
+      // 清理客户端状态
       connectedClients.erase(num);
       lastHeartbeat.erase(num);
-      PTHL("WebSocket client disconnected: ", num);
+      
+      // 如果当前任务属于这个客户端，需要处理
+      if (webTaskActive && currentWebTaskId != "" && 
+          webTasks.find(currentWebTaskId) != webTasks.end() && 
+          webTasks[currentWebTaskId].clientId == num) {
+        errorWebTask("Client disconnected");
+      }
       break;
       
     case WStype_CONNECTED:
+      // 检查连接数限制
+      if (connectedClients.size() >= MAX_CLIENTS) {
+        PTHL("Max clients reached, rejecting: ", num);
+        sendSocketResponse(num, "{\"type\":\"error\",\"error\":\"Max clients reached\"}");
+        webSocket.disconnect(num);
+        return;
+      }
+      
       connectedClients[num] = true;
       lastHeartbeat[num] = millis();
       PTHL("WebSocket client connected: ", num);
+      
+      // 发送连接成功响应
+      sendSocketResponse(num, "{\"type\":\"connected\",\"clientId\":\"" + String(num) + "\"}");
       break;
       
     case WStype_TEXT: {
@@ -157,12 +225,7 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
       
       if (error) {
         // JSON 解析错误，发送错误响应
-        JsonDocument errorDoc;
-        errorDoc["type"] = "error";
-        errorDoc["error"] = "Invalid JSON format";
-        String errorResponse;
-        serializeJson(errorDoc, errorResponse);
-        webSocket.sendTXT(num, errorResponse);
+        sendSocketResponse(num, "{\"type\":\"error\",\"error\":\"Invalid JSON format\"}");
         return;
       }
 
@@ -172,12 +235,7 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
       // 处理心跳消息
       if (doc["type"] == "heartbeat") {
         lastHeartbeat[num] = millis();
-        JsonDocument response;
-        response["type"] = "heartbeat";
-        response["timestamp"] = millis();
-        String responseStr;
-        serializeJson(response, responseStr);
-        webSocket.sendTXT(num, responseStr);
+        sendSocketResponse(num, "{\"type\":\"heartbeat\",\"timestamp\":" + String(millis()) + "}");
         return;
       }
 
@@ -207,6 +265,13 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
           task.commandGroup.push_back(cmd.as<String>());
         }
         
+        // 调试信息
+        PTHL("Received command task: ", taskId);
+        PTHL("Command count: ", task.commandGroup.size());
+        for (size_t i = 0; i < task.commandGroup.size(); i++) {
+          PTHL("Command " + String(i) + ": ", task.commandGroup[i]);
+        }
+        
         // 如果当前没有活跃的web任务，立即开始执行
         if (!webTaskActive) {
           // 存储任务
@@ -219,13 +284,7 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
         }
         
         // 发送任务开始响应
-        JsonDocument startDoc;
-        startDoc["type"] = "response";
-        startDoc["taskId"] = taskId;
-        startDoc["status"] = "running";
-        String startResponse;
-        serializeJson(startDoc, startResponse);
-        webSocket.sendTXT(num, startResponse);
+        sendSocketResponse(num, "{\"type\":\"response\",\"taskId\":\"" + taskId + "\",\"status\":\"running\"}");
         
         PTHL("web command group async: ", taskId);
         PTHL("command count: ", task.commandGroup.size());
@@ -250,48 +309,54 @@ void startWebTask(String taskId)
   webTaskActive = true;
   webResponse = "";  // Clear response buffer
 
-  // 执行命令组中的下一个命令
-  if (task.currentCommandIndex < task.commandGroup.size()) {
-    String webCmd = task.commandGroup[task.currentCommandIndex];
-    
-    // 检查是否是base64编码的命令
-    if (webCmd.startsWith("b64:")) {
-      String base64Cmd = webCmd.substring(4);
-      String decodedString = base64Decode(base64Cmd);
-      if (decodedString.length() > 0) {
-        token = decodedString[0];
-        for (int i = 1; i < decodedString.length(); i++) {
-          int8_t param = (int8_t)decodedString[i];
-          newCmd[i-1] = param;
-        }
-        // strcpy(newCmd, decodedString.c_str() + 1);
-        cmdLen = decodedString.length() - 1;
-        if (token >= 'A' && token <= 'Z') {
-          newCmd[cmdLen] = '~';
+      // 执行命令组中的下一个命令
+    if (task.currentCommandIndex < task.commandGroup.size()) {
+      String webCmd = task.commandGroup[task.currentCommandIndex];
+      
+      PTHL("Processing command: ", webCmd);
+      
+      // 检查是否是base64编码的命令
+      if (webCmd.startsWith("b64:")) {
+        String base64Cmd = webCmd.substring(4);
+        String decodedString = base64Decode(base64Cmd);
+        if (decodedString.length() > 0) {
+          token = decodedString[0];
+          for (int i = 1; i < decodedString.length(); i++) {
+            int8_t param = (int8_t)decodedString[i];
+            newCmd[i-1] = param;
+          }
+          // strcpy(newCmd, decodedString.c_str() + 1);
+          cmdLen = decodedString.length() - 1;
+          if (token >= 'A' && token <= 'Z') {
+            newCmd[cmdLen] = '~';
+          } else {
+            newCmd[cmdLen] = '\0';
+          }
+          PTHL("base64 decode token: ", token);
+          PTHL("base64 decode args count: ", cmdLen);
+          int8_t argStart = newCmd[0];
+          int8_t argEnd = newCmd[cmdLen - 1];
+          printf("base64 decode arg start: %d\n",argStart);
+          printf("base64 decode arg end: %d\n", argEnd);
         } else {
-          newCmd[cmdLen] = '\0';
+          PTHL("base64 decode failed: ", task.currentCommandIndex);
+          // base64 解码失败，跳过这个命令
+          task.currentCommandIndex++;
+          startWebTask(taskId);
+          return;
         }
-        PTHL("base64 decode token: ", token);
-        PTHL("base64 decode args count: ", cmdLen);
-        int8_t argStart = newCmd[0];
-        int8_t argEnd = newCmd[cmdLen - 1];
-        printf("base64 decode arg start: %d\n",argStart);
-        printf("base64 decode arg end: %d\n", argEnd);
       } else {
-        PTHL("base64 decode failed: ", task.currentCommandIndex);
-        // base64 解码失败，跳过这个命令
-        task.currentCommandIndex++;
-        startWebTask(taskId);
-        return;
+        // 解析命令
+        token = webCmd[0];
+        strcpy(newCmd, webCmd.c_str() + 1);
+        cmdLen = strlen(newCmd);
+        newCmd[cmdLen + 1] = '\0';
+        
+        PTHL("Parsed token: ", token);
+        PTHL("Parsed command: ", newCmd);
+        PTHL("Command length: ", cmdLen);
       }
-    } else {
-      // 解析命令
-      token = webCmd[0];
-      strcpy(newCmd, webCmd.c_str() + 1);
-      cmdLen = strlen(newCmd);
-      newCmd[cmdLen + 1] = '\0';
-    }
-    newCmdIdx = 4;
+      newCmdIdx = 4;
 
     // 更新任务状态
     task.status = "running";
@@ -354,7 +419,7 @@ void completeWebTask()
     }
     String statusMsg;
     serializeJson(completeDoc, statusMsg);
-    webSocket.sendTXT(task.clientId, statusMsg);
+    sendSocketResponse(task.clientId, statusMsg);
     PTHL("web task response: ", statusMsg);
     clearWebTask(currentWebTaskId);
   }
@@ -388,7 +453,7 @@ void errorWebTask(String errorMessage)
     errorDoc["error"] = errorMessage;
     String statusMsg;
     serializeJson(errorDoc, statusMsg);
-    webSocket.sendTXT(task.clientId, statusMsg);
+    sendSocketResponse(task.clientId, statusMsg);
     clearWebTask(currentWebTaskId);
   }
 
@@ -496,8 +561,14 @@ void WebServerLoop()
   if (webServerConnected) {
     webSocket.loop();
 
-    // 检查任务超时
+    // 定期检查连接健康状态
     unsigned long currentTime = millis();
+    if (currentTime - lastHealthCheckTime > HEALTH_CHECK_INTERVAL) {
+      checkConnectionHealth();
+      lastHealthCheckTime = currentTime;
+    }
+
+    // 检查任务超时
     for (auto &pair : webTasks) {
       WebTask &task = pair.second;
       if (task.status == "running" && task.startTime > 0) {
@@ -507,8 +578,7 @@ void WebServerLoop()
           task.resultReady = true;
 
           // 发送超时状态给客户端
-          String statusMsg = "{\"taskId\":\"" + task.taskId + "\",\"status\":\"error\",\"error\":\"Task timeout\"}";
-          webSocket.sendTXT(task.clientId, statusMsg);
+          sendSocketResponse(task.clientId, "{\"taskId\":\"" + task.taskId + "\",\"status\":\"error\",\"error\":\"Task timeout\"}");
 
           if (task.taskId == currentWebTaskId) {
             cmdFromWeb = false;
