@@ -420,16 +420,26 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
       {
         PTLF("The wifi info should start with \'w\' and followed by ssid and password, separated by %.\n e.g. w%WifiName%password");
         String wifiInfo = newCmd;
-        PTL(wifiInfo);
         int delimiter = wifiInfo.indexOf('%', 2); // 找到第二个%的位置
-        PTL(delimiter);
         if (delimiter != -1)
         {
           ssid = wifiInfo.substring(1, delimiter);
           password = wifiInfo.substring(delimiter + 1);
           PTHL("WifiSSID: ", ssid);
-          PTHL("Password: ", password);
+          // 只显示密码的后4位，其余用*代替
+          String maskedPassword = "";
+          if (password.length() > 4) {
+            for (int i = 0; i < password.length() - 4; i++) {
+              maskedPassword += "*";
+            }
+            maskedPassword += password.substring(password.length() - 4);
+          } else {
+            maskedPassword = password; // 如果密码长度<=4，显示全部
+          }
+          PTHL("Password: ", maskedPassword);
           webServerConnected = connectWifi(ssid, password);
+          // 清除密码变量，防止在内存中残留
+          password = "";
           if (webServerConnected)
           {
 //            PTHL("Successfully connected Wifi to IP Address: ", WiFi.localIP());
@@ -446,6 +456,8 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
           else
           {
             Serial.println("Timeout: Fail to connect Wifi!");
+            // 连接失败时也清除密码变量
+            password = "";
           }
         }
       }

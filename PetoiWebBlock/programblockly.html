@@ -2483,12 +2483,14 @@ ${code}
             // 如果配置的IP地址也连接失败，显示WiFi配置对话框
             console.log('Both serial and configured IP failed, showing WiFi config dialog');
             showWifiConfigDialog();
+            return; // 显示WiFi配置界面后退出
           }
         }
       }
-      else if (writer)
+
+      // 如果串口已连接，尝试发送WiFi命令获取IP地址
+      if (writer)
       {
-        // 如果串口已连接但需要重新获取IP地址，才调用 sendWifiCommand()
         await sendWifiCommand();
       }
     }
@@ -2506,6 +2508,8 @@ ${code}
     {
       if (!writer)
       {
+        console.log('No serial writer available, showing WiFi config dialog');
+        showWifiConfigDialog();
         return;
       }
 
@@ -2520,9 +2524,10 @@ ${code}
         setTimeout(() =>
         {
           // 检查是否获取到了IP地址
-          if (!currentDeviceIP)
+          if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
           {
-            // 如果没有获取到IP地址，显示WiFi配置界面
+            // 如果没有获取到IP地址或获取到的是默认AP模式IP，显示WiFi配置界面
+            console.log('No valid IP address received, showing WiFi config dialog');
             showWifiConfigDialog();
           }
         }, 3000); // 等待3秒
@@ -2538,6 +2543,12 @@ ${code}
     // 显示WiFi配置对话框
     function showWifiConfigDialog()
     {
+      // 检查是否已经存在对话框，避免重复创建
+      if (document.querySelector('.wifi-dialog'))
+      {
+        return;
+      }
+
       // 创建遮罩层
       const overlay = document.createElement('div');
       overlay.className = 'overlay';
@@ -2548,14 +2559,53 @@ ${code}
       dialog.className = 'wifi-dialog';
       dialog.innerHTML = `
         <h3>${getText("wifiConfig")}</h3>
-        <input type="text" id="ssidInput" placeholder="${getText("ssidPlaceholder")}">
-        <input type="password" id="passwordInput" placeholder="${getText("passwordPlaceholder")}">
+        <p style="color: #666; margin-bottom: 15px; font-size: 14px;">
+          ${getText("wifiConfigDescription") || "Please enter your WiFi credentials to connect the robot to your network."}
+        </p>
+        <input type="text" id="ssidInput" placeholder="${getText("ssidPlaceholder")}" autocomplete="off">
+        <input type="password" id="passwordInput" placeholder="${getText("passwordPlaceholder")}" autocomplete="off">
         <div class="button-container">
           <button class="cancel" onclick="closeWifiDialog()">${getText("cancel")}</button>
           <button class="confirm" onclick="confirmWifiSettings()">${getText("confirm")}</button>
         </div>
       `;
       document.body.appendChild(dialog);
+
+      // 自动聚焦到SSID输入框
+      setTimeout(() =>
+      {
+        const ssidInput = document.getElementById('ssidInput');
+        if (ssidInput)
+        {
+          ssidInput.focus();
+        }
+      }, 100);
+
+      // 添加回车键支持
+      const ssidInput = document.getElementById('ssidInput');
+      const passwordInput = document.getElementById('passwordInput');
+
+      if (ssidInput)
+      {
+        ssidInput.addEventListener('keypress', function (e)
+        {
+          if (e.key === 'Enter')
+          {
+            passwordInput.focus();
+          }
+        });
+      }
+
+      if (passwordInput)
+      {
+        passwordInput.addEventListener('keypress', function (e)
+        {
+          if (e.key === 'Enter')
+          {
+            confirmWifiSettings();
+          }
+        });
+      }
     }
 
     // 重置Quick Connect按钮样式和文本为默认状态
@@ -2570,6 +2620,64 @@ ${code}
       }
     }
 
+    // 显示通知消息
+    function showNotification(message, type = 'info')
+    {
+      // 创建通知元素
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+        z-index: 10000;
+        max-width: 300px;
+        word-wrap: break-word;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+      `;
+
+      // 根据类型设置颜色
+      switch (type)
+      {
+        case 'success':
+          notification.style.backgroundColor = '#4CAF50';
+          break;
+        case 'error':
+          notification.style.backgroundColor = '#f44336';
+          break;
+        case 'warning':
+          notification.style.backgroundColor = '#ff9800';
+          break;
+        default:
+          notification.style.backgroundColor = '#2196F3';
+      }
+
+      notification.textContent = message;
+      document.body.appendChild(notification);
+
+      // 3秒后自动移除
+      setTimeout(() =>
+      {
+        if (notification.parentNode)
+        {
+          notification.style.opacity = '0';
+          notification.style.transform = 'translateX(100%)';
+          setTimeout(() =>
+          {
+            if (notification.parentNode)
+            {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 300);
+        }
+      }, 3000);
+    }
+
     async function confirmWifiSettings()
     {
       const ssid = document.getElementById('ssidInput').value.trim();
@@ -2577,31 +2685,53 @@ ${code}
 
       if (!ssid)
       {
-        alert(getText("enterWifiName"));
+        alert(getText("enterWifiName") || "Please enter WiFi name");
         return;
       }
+
+      // 显示加载状态
+      const confirmBtn = document.querySelector('.wifi-dialog .confirm');
+      const originalText = confirmBtn.textContent;
+      confirmBtn.textContent = getText("connecting") || "Connecting...";
+      confirmBtn.disabled = true;
 
       const command = `w%${ssid}%${password}\n`;
 
       try
       {
-        await writer.write(new TextEncoder().encode(command));
+        if (writer)
+        {
+          await writer.write(new TextEncoder().encode(command));
+          console.log('WiFi configuration command sent successfully');
+        }
+        else
+        {
+          console.log('No serial writer available, but WiFi settings saved');
+        }
+
         closeWifiDialog();
 
-        // 确保按钮状态正确 - Wifi配置可能意味着连接已建立
-        if (!document.getElementById('closeSerialBtn').style.display ||
-          document.getElementById('closeSerialBtn').style.display === 'none')
+        // 显示成功消息
+        showNotification(getText("wifiConfigSent") || "WiFi configuration sent successfully. The robot will reboot and connect to your network.", 'success');
+
+        // 等待一段时间后尝试连接
+        setTimeout(async () =>
         {
-          // 如果关闭按钮不可见，则现在应该显示
-          document.getElementById('openSerialBtn').style.display = 'none';
-          document.getElementById('closeSerialBtn').style.display = 'inline-flex';
-        }
+          console.log('Attempting to connect after WiFi configuration...');
+          // 尝试使用新的WiFi配置连接
+          await tryConnectWithConfigIP();
+        }, 5000); // 等待5秒让设备重启并连接
+
       } catch (error)
       {
-        console.error(getText("wifiCommandError"), error);
-        alert(getText("wifiCommandFailed"));
-        // 连接失败时重置按钮
-        resetQuickConnectButton();
+        console.error(getText("wifiCommandError") || "WiFi command error:", error);
+
+        // 恢复按钮状态
+        confirmBtn.textContent = originalText;
+        confirmBtn.disabled = false;
+
+        // 显示错误消息
+        showNotification(getText("wifiCommandFailed") || "Failed to send WiFi configuration. Please check your serial connection.", 'error');
       }
     }
 

@@ -523,7 +523,7 @@ void startWifiManager() {
     ESP.restart();
   } else {
     webServerConnected = true;
-    PTHL("Successfully connected Wifi to IP Address: " + WiFi.localIP().toString());
+    printToAllPorts("Successfully connected Wifi to IP Address: " + WiFi.localIP().toString());
   }
 
   if (webServerConnected) {
