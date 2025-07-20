@@ -2,6 +2,14 @@
  * JavaScript代码生成器 - 为所有自定义积木生成JavaScript代码
  */
 
+// 辅助函数：包装异步操作，添加停止检查
+function wrapAsyncOperation(operation) {
+    return `(async () => { 
+  checkStopExecution();
+  ${operation}
+})();`;
+}
+
 // 代码生成:发送步态动作命令
 
 const COMMAND_TIMEOUT_MAX = 60 * 1000; // 60 seconds for most commands
@@ -13,9 +21,9 @@ Blockly.JavaScript.forBlock["gait"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${cmd}", 20000, true); if (result !== null) console.log(result); })();\n`;
+    let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", 20000, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -25,9 +33,9 @@ Blockly.JavaScript.forBlock["posture"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${cmd}", 10000, true); if (result !== null) console.log(result); })();\n`;
+    let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", 10000, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -37,9 +45,9 @@ Blockly.JavaScript.forBlock["acrobatic_moves"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${cmd}", ${ACROBATIC_MOVES_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
+    let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", ${ACROBATIC_MOVES_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -48,9 +56,21 @@ Blockly.JavaScript.forBlock["acrobatic_moves"] = function (block) {
 Blockly.JavaScript.forBlock["delay_ms"] = function (block) {
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000); // 将秒转换为毫秒
-    let code = `console.log(getText("delayMessage").replace("{delay}", ${delay}));\n`;
+    let code = `checkStopExecution();\nconsole.log(getText("delayMessage").replace("{delay}", ${delay}));\n`;
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 1000) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -60,14 +80,14 @@ Blockly.JavaScript.forBlock["gyro_control"] = function (block) {
     const state = block.getFieldValue("STATE");
     const value = state === "1" ? "U" : "u";
     const command = encodeCommand("g", [value]);
-    return `(async () => { const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result); })();\n`;
+    return wrapAsyncOperation(`const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result);`) + '\n';
 };
 
 // 代码生成:获取传感器输入代码生成器
 Blockly.JavaScript.forBlock["get_sensor_input"] = function (block) {
     var sensor = block.getFieldValue("SENSOR");
     return [
-        `parseInt(await webRequest("${sensor}", 5000, true)) || 0`,
+        `(async () => { checkStopExecution(); return parseInt(await webRequest("${sensor}", 5000, true)) || 0; })()`,
         Blockly.JavaScript.ORDER_FUNCTION_CALL,
     ];
 };
@@ -81,9 +101,9 @@ Blockly.JavaScript.forBlock["send_custom_command"] = function (block) {
     );
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest(${command}, ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
+    let code = wrapAsyncOperation(`const result = await webRequest(${command}, ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -103,7 +123,7 @@ Blockly.JavaScript.forBlock["console_log_variable"] = function (block) {
 Blockly.JavaScript.forBlock["play_note"] = function (block) {
     const note = block.getFieldValue("NOTE");
     const duration = block.getFieldValue("DURATION");
-    return `(async () => { const result = await webRequest("b ${note} ${duration}", 5000, true); if (result !== null) console.log(result); })();\n`;
+    return wrapAsyncOperation(`const result = await webRequest("b ${note} ${duration}", 5000, true); if (result !== null) console.log(result);`) + '\n';
 };
 
 // 代码生成:播放旋律代码生成器
@@ -132,9 +152,9 @@ Blockly.JavaScript.forBlock["play_melody"] = function (block) {
     
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.ceil(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${encodeCmd}", ${LONG_COMMAND_TIMEOUT}, true, "${displayCmd}"); if (result !== null) console.log(result); })();\n`;
+    let code = wrapAsyncOperation(`const result = await webRequest("${encodeCmd}", ${LONG_COMMAND_TIMEOUT}, true, "${displayCmd}"); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -150,6 +170,7 @@ javascript.javascriptGenerator.forBlock["set_joints_angle_seq"] = function (
     );
     const delay = block.getFieldValue("DELAY");
     let code = `
+checkStopExecution();
 await (async function() {
   const command = await encodeMoveCommand("${token}", ${variableText});
   await webRequest(command, ${COMMAND_TIMEOUT_MAX}, true);
@@ -158,7 +179,7 @@ await (async function() {
 `
     const delayMs = Math.ceil(delay * 1000);
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -174,6 +195,7 @@ javascript.javascriptGenerator.forBlock["set_joints_angle_sim"] = function (
         Blockly.JavaScript.ORDER_ATOMIC
     );
     let code = `
+checkStopExecution();
 await (async function() {
   const command = await encodeMoveCommand("${token}", ${variableText});
   await webRequest(command, ${COMMAND_TIMEOUT_MAX}, true);
@@ -182,7 +204,7 @@ await (async function() {
 `
     const delayMs = Math.ceil(delay * 1000);
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -212,9 +234,9 @@ javascript.javascriptGenerator.forBlock["set_joints_angle_sim_raw"] = function (
         const delay = block.getFieldValue("DELAY");
         const delayMs = Math.ceil(delay * 1000);
         const command = encodeCommand(token, angleParams);
-        let code = `(async () => { const result = await webRequest("${command}", 30000, true); if (result !== null) console.log(result); })();\n`;
+        let code = wrapAsyncOperation(`const result = await webRequest("${command}", 30000, true); if (result !== null) console.log(result);`) + '\n';
         if (delayMs > 0) {
-            code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
         }
         return code;
     }
@@ -236,6 +258,7 @@ javascript.javascriptGenerator.forBlock["set_joint_angle"] = function (block) {
     );
     const token = "m";
     let code = `
+checkStopExecution();
 await (async function() {
   const command = await encodeMoveCommand("${token}", ${variableText});
   await webRequest(command, ${COMMAND_TIMEOUT_MAX}, true);
@@ -245,7 +268,7 @@ await (async function() {
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.ceil(delay * 1000);
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -282,7 +305,7 @@ javascript.javascriptGenerator.forBlock["get_joint_angle"] = function (block) {
     const jointId = block.getFieldValue("JOINT");
     const command = encodeCommand("j", [jointId]);
     return [
-        `parseInt(await webRequest("${command}", 5000, true)) || 0`,
+        `(async () => { checkStopExecution(); return parseInt(await webRequest("${command}", 5000, true)) || 0; })()`,
         Blockly.JavaScript.ORDER_FUNCTION_CALL,
     ];
 };
@@ -294,6 +317,7 @@ javascript.javascriptGenerator.forBlock["get_all_joint_angles"] = function (
     const command = "j";
     let code = `
 await (async function() {
+  checkStopExecution();
   const rawResult = await webRequest("${command}", 5000, true);
   const result = parseAllJointsResult(rawResult);
   return result;
@@ -307,9 +331,9 @@ javascript.javascriptGenerator.forBlock["arm_action"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
+    let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
     return code;
 };
@@ -331,9 +355,9 @@ javascript.javascriptGenerator.forBlock["action_skill_file"] = function (
     const token = skillContent.token;
     const list = skillContent.data.flat();
     const cmd = encodeCommand(token, list);
-    let code = `(async () => { const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
+    let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delay > 0) {
-        code += `await new Promise(resolve => setTimeout(resolve, ${delay}));\n`;
+        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delay}));\n`;
     }
     return code;
 };
@@ -362,7 +386,7 @@ javascript.javascriptGenerator.forBlock["set_analog_output"] = function (
     const pin = block.getFieldValue("PIN");
     const value = block.getFieldValue("VALUE");
     const command = encodeCommand("Wa", [pin, value]);
-    return `(async () => { const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result); })();\n`;
+    return wrapAsyncOperation(`const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result);`) + '\n';
 };
 
 // 代码生成:设置数字输出的代码
@@ -372,18 +396,19 @@ javascript.javascriptGenerator.forBlock["set_digital_output"] = function (
     const pin = block.getFieldValue("PIN");
     const value = block.getFieldValue("VALUE");
     const command = encodeCommand("Wd", [pin, value]);
-    return `(async () => { const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result); })();\n`;
+    return wrapAsyncOperation(`const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result);`) + '\n';
 };
 
-// 代码生成:获取数字输入代码生成器 - 移除重复定义，改为异步
+// 代码生成:获取数字输入代码生成器 - 只在showDebug下自动打印
 Blockly.JavaScript.forBlock["get_digital_input"] = function (block) {
     const pin = block.getFieldValue("PIN");
     const command = encodeCommand("Rd", [pin]);
     let code = `await (async function() {
+    checkStopExecution();
     const rawResult = await webRequest("${command}", 5000, true);
     const result = parseSingleResult(rawResult);
-    // 只在非showSentCommands模式下打印结果
-    if (typeof showSentCommands === 'undefined' || !showSentCommands) {
+    // 只在showDebug模式下打印结果
+    if (typeof showDebug !== 'undefined' && showDebug) {
       console.log(result);
     }
     return result;
@@ -391,15 +416,16 @@ Blockly.JavaScript.forBlock["get_digital_input"] = function (block) {
     return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
 };
 
-// 代码生成:获取模拟输入代码生成器 - 移除重复定义，改为异步
+// 代码生成:获取模拟输入代码生成器 - 只在showDebug下自动打印
 Blockly.JavaScript.forBlock["get_analog_input"] = function (block) {
     const pin = block.getFieldValue("PIN");
     const command = encodeCommand("Ra", [pin]);
     let code = `await (async function() {
+    checkStopExecution();
     const rawResult = await webRequest("${command}", 5000, true);
     const result = parseSingleResult(rawResult);
-    // 只在非showSentCommands模式下打印结果
-    if (typeof showSentCommands === 'undefined' || !showSentCommands) {
+    // 只在showDebug模式下打印结果
+    if (typeof showDebug !== 'undefined' && showDebug) {
       console.log(result);
     }
     return result;
@@ -407,12 +433,7 @@ Blockly.JavaScript.forBlock["get_analog_input"] = function (block) {
     return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
 };
 
-// 代码生成:获取超声波传感器距离积木
-// {
-//   "type": "event_us",
-//   "distance": 150,  // 距离值（单位：厘米）
-//   "timestamp": 1234567890
-// }
+// 代码生成:获取超声波传感器距离积木 - 只在showDebug下自动打印
 javascript.javascriptGenerator.forBlock["getUltrasonicDistance"] = function (
     block
 ) {
@@ -420,12 +441,12 @@ javascript.javascriptGenerator.forBlock["getUltrasonicDistance"] = function (
     const ecPinValue = block.getFieldValue("ECPIN");
     const ecPin = ecPinValue === "-1" ? trPin : ecPinValue;
     const command = encodeCommand("XU", [trPin, ecPin]);
-    //rawResult is string like ""0\nX\n"
     let code = `await (async function() {
+    checkStopExecution();
     const rawResult = await webRequest("${command}", 5000, true);
     const result = parseSingleResult(rawResult);
-    // 只在非showSentCommands模式下打印结果
-    if (typeof showSentCommands === 'undefined' || !showSentCommands) {
+    // 只在showDebug模式下打印结果
+    if (typeof showDebug !== 'undefined' && showDebug) {
       console.log(result);
     }
     return result;
@@ -447,7 +468,9 @@ javascript.javascriptGenerator.forBlock["getCameraCoordinate"] = function (
 ) {
     let code = `
 await (async function() {
+  checkStopExecution();
   await webRequest("XC", 5000, true);
+  checkStopExecution();
   const rawResult = await webRequest("XCp", 5000, true);
   const result = parseCameraCoordinateResult(rawResult);
   return result;
@@ -688,3 +711,53 @@ function mockwebRequest(ip, command, returnResult = false) {
 
     return returnResult ? "0" : true; // 默认返回值
 }
+
+// 循环积木块的代码生成器 - 添加停止检查
+Blockly.JavaScript.forBlock["controls_repeat_ext"] = function(block) {
+    const repeats = Blockly.JavaScript.valueToCode(block, 'TIMES', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+    const branch = Blockly.JavaScript.statementToCode(block, 'DO');
+    const code = `
+for (let i = 0; i < ${repeats}; i++) {
+  await checkStopExecutionInLoop();
+  ${branch}
+}`;
+    return code;
+};
+
+Blockly.JavaScript.forBlock["controls_whileUntil"] = function(block) {
+    const until = block.getFieldValue('MODE') === 'UNTIL';
+    const argument0 = Blockly.JavaScript.valueToCode(block, 'BOOL', Blockly.JavaScript.ORDER_NONE) || 'false';
+    const branch = Blockly.JavaScript.statementToCode(block, 'DO');
+    const code = `
+while (${until ? '!' : ''}(${argument0})) {
+  await checkStopExecutionInLoop();
+  ${branch}
+}`;
+    return code;
+};
+
+Blockly.JavaScript.forBlock["controls_for"] = function(block) {
+    const variable0 = Blockly.JavaScript.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
+    const argument0 = Blockly.JavaScript.valueToCode(block, 'FROM', Blockly.JavaScript.ORDER_NONE) || '0';
+    const argument1 = Blockly.JavaScript.valueToCode(block, 'TO', Blockly.JavaScript.ORDER_NONE) || '0';
+    const increment = Blockly.JavaScript.valueToCode(block, 'BY', Blockly.JavaScript.ORDER_NONE) || '1';
+    const branch = Blockly.JavaScript.statementToCode(block, 'DO');
+    const code = `
+for (let ${variable0} = ${argument0}; ${variable0} <= ${argument1}; ${variable0} += ${increment}) {
+  await checkStopExecutionInLoop();
+  ${branch}
+}`;
+    return code;
+};
+
+Blockly.JavaScript.forBlock["controls_forEach"] = function(block) {
+    const variable0 = Blockly.JavaScript.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
+    const argument0 = Blockly.JavaScript.valueToCode(block, 'LIST', Blockly.JavaScript.ORDER_NONE) || '[]';
+    const branch = Blockly.JavaScript.statementToCode(block, 'DO');
+    const code = `
+for (const ${variable0} of ${argument0}) {
+  await checkStopExecutionInLoop();
+  ${branch}
+}`;
+    return code;
+};

@@ -35,6 +35,7 @@
     <div class="button-group">
       <button onclick="showCode()" data-i18n="showCode">Show Code</button>
       <button onclick="runCode()" data-i18n="runCode">Run Code</button>
+      <button onclick="stopCode()" id="stopCodeBtn" data-i18n="stopCode" style="display: none;">Stop Code</button>
       <button onclick="saveWorkspace()" data-i18n="saveProgram">Save Program</button>
       <button onclick="document.getElementById('loadInput').click()" data-i18n="loadProgram">Load Program</button>
       <button onclick="triggerSkillFileUpload()" data-i18n="uploadSkills">Upload Skills</button>
@@ -1017,6 +1018,7 @@
     // 防抖变量
     let lastRunCodeTime = 0;
     let isProgramRunning = false;
+    let stopExecution = false; // 全局停止标志
 
     // IP地址格式验证函数
     function isValidIPAddress(ip)
@@ -1098,11 +1100,28 @@
       executeRunCode();
     }
 
+    function stopCode()
+    {
+      if (isProgramRunning)
+      {
+        stopExecution = true;
+        console.log(getText("stopRequested"));
+      }
+    }
+
     function executeRunCode()
     {
       const now = Date.now();
       lastRunCodeTime = now;
       isProgramRunning = true;
+      stopExecution = false; // 重置停止标志
+
+      // 显示停止按钮，隐藏运行按钮，并设置停止按钮为红色背景
+      const stopBtn = document.getElementById('stopCodeBtn');
+      stopBtn.style.display = 'inline-block';
+      stopBtn.style.backgroundColor = '#ff4444';
+      stopBtn.style.color = 'white';
+      document.querySelector('button[onclick="runCode()"]').style.display = 'none';
 
       console.log(getText("programExecutionStarted"));
 
@@ -1141,25 +1160,62 @@ function asyncLog(message) {
   });
 }
 
-(async function () {
+// 检查停止标志的函数
+function checkStopExecution() {
+  if (stopExecution) {
+    throw new Error("程序执行被用户停止");
+  }
+}
 
+// 改进的循环停止检查函数
+function checkStopExecutionInLoop() {
+  if (stopExecution) {
+    throw new Error("程序执行被用户停止");
+  }
+  // 给其他任务执行的机会，包括停止检查
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+(async function () {
+  try {
+    checkStopExecution();
+    
 ${code}
 
-  try {
+    checkStopExecution();
     // 程序结束时自动发送休息指令'd'
     await asyncLog(getText("programEndingRestCommand"));
     await webRequest("d", 5000, true);
   } catch (e) {
-    console.error(getText("restCommandFailed") + e.message);
+    if (e.message === "程序执行被用户停止") {
+      // 只在catch块中打印一次停止消息，避免重复
+      await asyncLog(getText("programExecutionStopped"));
+    } else {
+      console.error(getText("restCommandFailed") + e.message);
+    }
   }
   await closeConnection();
   console.log(getText("taskEnded"));
 })().catch((e) => {
-  console.error(getText("networkRequestError") + ": " + e.message);
-  alert(getText("networkRequestError") + ": " + e.message);
+  if (e.message === "程序执行被用户停止") {
+    // 停止消息已在try-catch中处理，这里不需要重复打印
+    // console.log(getText("programExecutionStopped"));
+  } else {
+    console.error(getText("networkRequestError") + ": " + e.message);
+    alert(getText("networkRequestError") + ": " + e.message);
+  }
 }).finally(() => {
   // 程序执行完成后，重置运行状态
   isProgramRunning = false;
+  stopExecution = false;
+  
+  // 隐藏停止按钮，显示运行按钮，并重置停止按钮样式
+  const stopBtn = document.getElementById('stopCodeBtn');
+  stopBtn.style.display = 'none';
+  stopBtn.style.backgroundColor = '';
+  stopBtn.style.color = '';
+  document.querySelector('button[onclick="runCode()"]').style.display = 'inline-block';
+  
   console.log(getText("programExecutionCompleted"));
 });
 `
@@ -1172,8 +1228,13 @@ ${code}
         console.info(runCodeBlock);
         console.error(getText("networkRequestError") + ": " + e.message);
         alert(getText("networkRequestError") + ": " + e.message);
-        // 发生错误时也要重置运行状态
+        // 发生错误时也要重置运行状态和按钮样式
         isProgramRunning = false;
+        const stopBtn = document.getElementById('stopCodeBtn');
+        stopBtn.style.display = 'none';
+        stopBtn.style.backgroundColor = '';
+        stopBtn.style.color = '';
+        document.querySelector('button[onclick="runCode()"]').style.display = 'inline-block';
       }
     }
 

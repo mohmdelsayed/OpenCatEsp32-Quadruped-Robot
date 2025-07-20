@@ -98,6 +98,12 @@ function webRequest(command, timeout = 30000, needResponse = true, displayComman
     {
       try
       {
+        // 检查停止标志
+        if (typeof stopExecution !== 'undefined' && stopExecution) {
+          reject(new Error("程序执行被用户停止"));
+          return;
+        }
+        
         // 使用全局的 WebSocket 客户端实例
         if (!window.client) {
           reject(new Error(getText("noConnectionEstablished")));
