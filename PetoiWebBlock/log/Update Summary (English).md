@@ -1,228 +1,92 @@
-# Web Updates Summary (from commit 996631e to latest)
+# Web Improvements Summary (from commit 996631e to latest)
 
-## Updates Summary Table
+## Feature Improvements Summary Table
 
-| Update Type | Technical Changes | File Location | Detailed Function Description | User Experience Analysis |
-|-------------|------------------|---------------|------------------------------|-------------------------|
-| **Connection Stability Optimization** | Improved WebSocket heartbeat mechanism and reconnection strategy | `js/petoi_async_client.js`<br>`src/webServer.h` | Heartbeat interval reduced from 4s to 3s, timeout from 15s to 10s, health check interval from 10s to 5s, reconnection delay from 1s to 0.5s | **Problem**: Unstable connection after long-term use<br>**Solution**: More frequent heartbeat detection and fast reconnection<br>**Improvement**: Connection stability significantly improved, reduced manual reconnection needs |
-| **Serial Connection Optimization** | Optimized serial connection and data display logic | `programblockly.html`<br>`styles.css`<br>`lang/translations.js` | Auto-select unique available port when connecting serial, improved serial data display format, optimized timestamp display, added connection status indicator | **Problem**: Unclear serial data display, confusing connection status<br>**Solution**: Improved serial interface layout and status display<br>**Improvement**: Serial monitor interface clearer, status display more accurate |
-| **Quick Connect Logic Improvement** | Implemented IP auto-loading and intelligent button state management | `programblockly.html`<br>`lang/translations.js` | Auto-open serial and send 'w' command when clicking Quick Connect, auto-load last saved IP address, intelligent connection state judgment to update button display | **Problem**: Quick Connect button state inconsistent with actual connection<br>**Solution**: Intelligent connection state judgment, auto-load saved IP<br>**Improvement**: Button state accurately reflects connection state, more intuitive user experience |
-| **Hardware Disconnection Handling** | Added hardware disconnection detection and auto-cleanup mechanism | `programblockly.html` | 3-second timeout auto-detection when hardware disconnects, auto-cleanup serial connection state, reset related button states, avoid interface freeze | **Problem**: No response after hardware disconnection<br>**Solution**: 3-second timeout mechanism and hardware disconnection auto-detection<br>**Improvement**: System auto-responds when hardware disconnects, avoid interface freeze |
-| **Serial Connection Failure Handling** | Distinguish serial connection and WebSocket connection states | `programblockly.html` | Serial connection failure doesn't affect WebSocket state display, independent management of different connection types, maintain interface state consistency | **Problem**: Serial connection failure affects WebSocket state display<br>**Solution**: Independent management of different connection type states<br>**Improvement**: Connection failure doesn't affect other connection state display |
-| **Sensor Data Reading Optimization** | Improved data parsing and buffer management | `programblockly.html`<br>`js/petoi_async_client.js` | Use regex to validate data integrity, improved data buffer management, avoid data split display, optimize long-term reading stability | **Problem**: Data split and timeout errors during long-term reading<br>**Solution**: Data integrity validation and buffer optimization<br>**Improvement**: Sensor data reading more stable, better data quality |
-| **Timeout Time Intelligent Optimization** | Auto-set timeout time based on command type | `js/petoi_async_client.js` | Sensor reading commands 5s timeout, normal commands 10s timeout, complex action commands 15s timeout, replacing unified 60s timeout | **Problem**: All commands use 60s timeout, too slow response<br>**Solution**: Sensor 5s, normal commands 10s, complex actions 15s<br>**Improvement**: Problem response speed improved 4-12 times |
-| **Serial Display Optimization** | Improved serial data formatting and timestamp display | `programblockly.html`<br>`styles.css` | Unified serial data display format, optimized timestamp display logic, improved data line break handling, added data integrity check | **Problem**: Inconsistent serial data display format, confusing timestamp display<br>**Solution**: Unified data format, optimized timestamp display logic<br>**Improvement**: Serial data display clearer, timestamps more accurate |
-| **WebSocket Connection Health Check** | Added connection health check and auto-recovery mechanism | `js/petoi_async_client.js` | Execute connection health check every 5 seconds, auto-attempt reconnection when abnormality detected, use exponential backoff strategy | **Problem**: Cannot detect and recover from connection abnormalities in time<br>**Solution**: 5-second interval health check and auto-recovery<br>**Improvement**: Connection abnormalities can be detected and auto-recovered |
-| **Error Handling Improvement** | Optimized error messages and user prompts | `lang/translations.js`<br>`programblockly.html` | Provide more detailed error information, add handling suggestions, improve error prompt user-friendliness, add error classification | **Problem**: Unclear error messages, users don't know how to handle<br>**Solution**: More detailed error information and handling suggestions<br>**Improvement**: Error messages more friendly, users know how to handle problems |
-| **Configuration Persistence** | Implemented IP address and connection configuration auto-save | `programblockly.html` | Auto-save successfully connected IP addresses to localStorage, auto-restore last IP configuration when page loads, reduce repeated configuration | **Problem**: Need to reconfigure connection every restart<br>**Solution**: Auto-save and load connection configuration<br>**Improvement**: Reduce repeated configuration, improve usage convenience |
-| **Interface Responsiveness Optimization** | Improved UI update and state synchronization mechanism | `programblockly.html`<br>`styles.css` | Real-time update connection state display, synchronize button colors and text, improve state indicator response speed | **Problem**: Interface state updates not timely, poor user experience<br>**Solution**: Real-time state synchronization and UI updates<br>**Improvement**: Interface responds more timely, smoother user experience |
-| **Debug Information Control** | Added Debug information display switch | `programblockly.html`<br>`styles.css` | Added Debug button to control debug information display, use regex to identify debug messages, can dynamically switch display state | **Problem**: Too much debug information affects normal use<br>**Solution**: Added Debug switch to control display<br>**Improvement**: Users can choose whether to view debug information, cleaner interface |
-| **Serial Configuration Window Optimization** | Improved serial configuration interface and logic | `programblockly.html` | Auto-open configuration window when no available serial ports, improved serial selection interface, optimized configuration flow user experience | **Problem**: Complex serial configuration flow, poor user experience<br>**Solution**: Auto-detection and configuration guidance<br>**Improvement**: Configuration flow simpler, better user experience |
-| **Show Commands Function Fix** | Fixed command display and sensor reading issues | `blocks/communication.js`<br>`blocks/generators.js`<br>`js/petoi_async_client.js` | Fixed incorrect command display in show commands mode, separated debug information from user-concerned command information, fixed sensor returning 0 in show commands mode | **Problem**: Incorrect command display when show commands activated, sensor returns 0<br>**Solution**: Improved command display logic, fixed sensor reading issues<br>**Improvement**: Command display clearer, sensor function normal |
-| **Run Code Debounce Mechanism** | Added time debounce and state debounce | `programblockly.html`<br>`test_run_code_debounce.html` | 1-second time debounce prevents rapid repeated clicks, state debounce prevents program overlap execution, intelligent IP detection auto-executes quick connect | **Problem**: Rapid clicking causes program repeated execution, complex IP configuration<br>**Solution**: Debounce mechanism and intelligent IP detection<br>**Improvement**: Prevent misoperations, auto-connection more intelligent |
-| **Null Safety Fix** | Fixed null reference errors | `js/petoi_async_client.js`<br>`blocks/generators.js` | Fixed "Cannot read properties of null" errors, improved data parsing function safety, added null check mechanism | **Problem**: Null reference errors when sending commands<br>**Solution**: Added null safety checks, improved error handling<br>**Improvement**: System more stable, error handling more complete |
-| **Configuration Persistence Enhancement** | Improved configuration save and load mechanism | `programblockly.html`<br>`log/CONFIG_FILE_FEATURE.md` | Auto-try saved IP address when serial connection fails, maintain connection history, intelligent fallback to WiFi configuration | **Problem**: Manual configuration needed when serial connection fails<br>**Solution**: Auto-try saved IP, intelligent fallback mechanism<br>**Improvement**: Higher connection success rate, more intelligent configuration |
-| **Stop Function Improvement** | Added global stop mechanism and UI optimization | `programblockly.html`<br>`blocks/generators.js`<br>`lang/translations.js` | Added global stopExecution flag, stop button red background, fixed stop prompt duplicate printing, support stop check in loops | **Problem**: Cannot stop long-running programs, duplicate stop prompts<br>**Solution**: Global stop mechanism, UI optimization, fixed duplicate prompts<br>**Improvement**: More flexible program control, better user experience |
-| **Sensor Auto-Print Optimization** | Improved sensor reading auto-print logic | `blocks/generators.js` | Changed sensor reading block auto-print condition from showSentCommands to showDebug, separated command display from debug information | **Problem**: Sensor auto-print confused with command display<br>**Solution**: Use showDebug to control sensor auto-print<br>**Improvement**: Logic clearer, more precise user control |
-| **Stop Function Major Improvement** | Implemented instant interruption for long-running commands and delays | `js/petoi_async_client.js`<br>`blocks/generators.js` | Added stop flag check timer in WebSocket client (check every 100ms), modified all code generators to segment long delays (>100ms) for stop flag checking, auto-send rest command 'd' when program stops | **Problem**: Long-running gait commands and delays cannot be stopped immediately, need to wait for command completion or timeout<br>**Solution**: Check stop flag within 100ms, segment long delays for checking, auto-send rest command when stopping<br>**Improvement**: Stop response speed improved from 8 seconds to 100ms, significant user experience improvement |
+| Feature Module | Feature Name | Technical Implementation | File Location | Operation Flow | User Experience Improvement |
+|---------------|-------------|-------------------------|---------------|----------------|----------------------------|
+| 🔗 Connection Management | **Quick Connect Button** | One-click auto-connection, smart IP detection | `programblockly.html`, `lang/translations.js` | 1. Click Quick Connect button<br>2. Auto-open serial connection<br>3. Send 'w' command to get device IP<br>4. Auto-attempt WebSocket connection<br>5. Save IP config after successful connection<br>6. Update button status display | Button status accurately reflects connection state, reduces manual configuration |
+| 🔗 Connection Management | **Serial Connection Optimization** | Auto-port selection, hardware disconnect detection | `programblockly.html`, `styles.css`, `lang/translations.js` | 1. System detects available serial ports<br>2. Auto-select unique port<br>3. Establish serial connection<br>4. Real-time monitor connection status<br>5. Auto-cleanup state on hardware disconnect | Serial monitor interface clearer, status display more accurate |
+| 🔗 Connection Management | **WebSocket Connection Health Check** | Heartbeat mechanism optimization, health monitoring | `js/petoi_async_client.js` | 1. Execute connection health check every 5 seconds<br>2. Auto-reconnect on anomaly detection<br>3. Use exponential backoff strategy<br>4. Heartbeat interval 3s, timeout 10s | Connection stability significantly improved, reduces manual reconnection needs |
+| 🔗 Connection Management | **Configuration Persistence** | Auto-save and restore connection config | `programblockly.html` | 1. Auto-save IP after successful connection<br>2. Auto-load saved IP on page refresh<br>3. Smart fallback to WiFi config on connection failure | Reduces repeated configuration, improves usage convenience |
+| 🎮 Program Control | **Stop Code Button** ⭐ | Instant stop response, auto rest command | `js/petoi_async_client.js`, `blocks/generators.js`, `programblockly.html` | 1. User clicks Stop Code button<br>2. Set stopExecution = true<br>3. Check stop flag within 100ms<br>4. Immediately interrupt current command execution<br>5. Auto-send rest command 'd'<br>6. Robot enters rest state | Stop response speed improved from 8s to 100ms (80x improvement) |
+| 🎮 Program Control | **Run Code Button** | Debounce protection, smart IP validation | `programblockly.html`, `lang/translations.js` | 1. User clicks Run Code button<br>2. Check for duplicate clicks within 1 second<br>3. Check if program is running<br>4. Validate IP address format<br>5. Auto-execute Quick Connect if needed<br>6. Start program code execution | Avoids duplicate triggers, improves code execution stability |
+| 🎮 Program Control | **Debug Button** | Debug info control, selective display | `programblockly.html`, `styles.css` | 1. Click Debug button to toggle display state<br>2. System filters debug information<br>3. Show detailed info only in Debug mode<br>4. Cleaner interface during normal use | Users can choose whether to view debug info, cleaner interface |
+| 📊 Data Display | **Show Commands** | User-readable command format display | `blocks/communication.js`, `blocks/generators.js`, `js/petoi_async_client.js` | 1. Enable Show Commands switch<br>2. Auto-decode base64 when sending commands<br>3. Display user-readable command format<br>4. Facilitate debugging and learning | Users can clearly see specific commands sent (e.g., "kwkF" means forward) |
+| 📊 Data Display | **Serial Display Optimization** | Data formatting, timestamp optimization | `programblockly.html`, `styles.css` | 1. Unify serial data display format<br>2. Optimize timestamp display logic<br>3. Improve data line break handling<br>4. Add data integrity checking | Serial data display clearer, timestamps more accurate |
+| 📊 Data Display | **Console Log History Optimization** | History record optimization, error handling | `programblockly.html` | 1. Increase Console log history limit from 100 to 500 entries<br>2. Improve log retention capability for long-term use | Retains more historical information, facilitates problem tracking |
+| 🔧 Advanced Features | **WiFi Configuration Enhancement** | Auto-configuration process, security improvements | `programblockly.html`, `styles.css` | 1. Serial connection fails<br>2. IP configuration fails<br>3. Auto-display WiFi configuration interface<br>4. User inputs WiFi information<br>5. Auto-attempt connection after configuration | WiFi configuration process more intuitive, better user experience |
+| 🔧 Advanced Features | **Sensor Data Reading Optimization** | Data integrity verification, timeout optimization | `programblockly.html`, `js/petoi_async_client.js` | 1. Use regex to verify data integrity<br>2. Improve data buffer management<br>3. Avoid data split display<br>4. Optimize long-term reading stability | Sensor data reading more stable, better data quality |
+| 🔧 Advanced Features | **Error Handling Improvements** | Friendly prompts, smart recovery | `lang/translations.js`, `programblockly.html` | 1. Provide more detailed error information<br>2. Add handling suggestions<br>3. Improve user-friendly error prompts<br>4. Increase error categorization | Error messages more friendly, users know how to handle problems |
+
+## Technical Improvement Highlights
+
+### WebSocket Optimization
+| Parameter | Before Optimization | After Optimization | Improvement Effect |
+|-----------|-------------------|-------------------|-------------------|
+| Heartbeat Interval | 4 seconds | 3 seconds | Faster response |
+| Heartbeat Timeout | 15 seconds | 10 seconds | Faster connection problem detection |
+| Health Check | 10 seconds | 5 seconds | More frequent health checks |
+| Reconnection Delay | 1 second | 0.5 seconds | Faster reconnection |
+
+### Stop Function Optimization ⭐
+| Feature | Before Optimization | After Optimization | Improvement Effect |
+|---------|-------------------|-------------------|-------------------|
+| WebSocket Command Stop Check | No check | Check every 100ms | Instant response to stop requests |
+| Long Delay Stop Check | No check | Segmented check (every 100ms) | Delays can also be stopped immediately |
+| Stop Response Speed | 8 seconds | 100ms | 80x improvement |
+| Program Stop Handling | Manual rest command | Auto-send 'd' command | Automated processing |
+
+### Timeout Optimization
+| Command Type | Before Optimization | After Optimization | Improvement Effect |
+|--------------|-------------------|-------------------|-------------------|
+| Sensor Reading | 60 seconds | 5 seconds | 12x improvement |
+| Regular Commands | 60 seconds | 10 seconds | 6x improvement |
+| Complex Actions | 60 seconds | 15 seconds | 4x improvement |
+
+### Interface Optimization
+| Feature | Before Optimization | After Optimization | User Experience Improvement |
+|---------|-------------------|-------------------|---------------------------|
+| Debug Information | Cannot control | Selective display | Cleaner interface |
+| Quick Connect | Manual operation | One-click auto-connection | Simpler operation |
+| Configuration Management | Manual repeated config | Auto-save and load | Reduces repetitive work |
+| Status Display | Delayed inaccurate | Real-time accurate | More reliable information |
+| Show Commands | Base64 encoding | User-readable format | Facilitates debugging and learning |
+| Run Code | Duplicate triggers | Debounce protection | Avoids accidental operations |
+| Stop Button | No visual feedback | Red background prompt | Clearer status indication |
+
+### Security Improvements
+| Security Aspect | Before Optimization | After Optimization | Security Enhancement |
+|----------------|-------------------|-------------------|-------------------|
+| WiFi Password Display | Plain text display | Masked display (last 4 digits) | Prevents password leakage |
+| Memory Management | No cleanup | Memory cleanup prevents residue | Improves security |
+| Error Handling | Simple prompts | Detailed error information | Better error diagnosis |
+| Null Check | Basic check | Enhanced null safety check | Prevents program crashes |
 
 ## Overall User Experience Improvement Summary
 
 ### Connection Management
-- **Connection Stability**: Unstable → Highly Stable (Auto-reconnection mechanism)
-- **State Display Accuracy**: Confusing → 100% Accurate (Intelligent state management)
-- **Configuration Convenience**: Manual repeated configuration → Auto-save and load
+- **Connection Stability**: Unstable → Highly stable (auto-reconnection mechanism)
+- **Status Display Accuracy**: Chaotic → 100% accurate (smart status management)
+- **Configuration Convenience**: Manual repeated config → Auto-save and load
 - **Serial Connection**: Manual selection → Auto-select unique option
-- **Intelligent Fallback**: No fallback when connection fails → Auto-try saved IP
+- **IP Validation**: Manual detection → Auto-validation and Quick Connect
 
-### Data Reading
-- **Sensor Data Quality**: Split errors → Complete and accurate
-- **Response Speed**: 60s timeout → 5-15s (4-12x improvement)
-- **Error Handling**: Freeze no response → Intelligent handling
-- **Data Parsing**: Simple split → Intelligent integrity validation
-- **Null Safety**: Frequent crashes → Completely stable
-
-### Interface Experience
-- **Serial Display**: Format confusion → Clear and unified
-- **State Feedback**: Delayed inaccurate → Real-time accurate
-- **Error Prompts**: Unfriendly → Detailed and friendly
-- **Debug Control**: Cannot control → Selective display
-- **Quick Connect**: Manual operation → One-click auto-connection
-- **Stop Button**: No visual feedback → Red background eye-catching
-- **Debounce Mechanism**: Frequent misoperations → Intelligent debounce
-
-### Program Control
-- **Stop Function**: Cannot stop → Global stop mechanism
-- **Loop Control**: Cannot interrupt → Support stop in loops
-- **Command Display**: Confusing unclear → Clear separation
-- **Debounce Protection**: Repeated execution → Intelligent debounce
+### Program Control ⭐
 - **Stop Response**: 8-second delay → 100ms instant response
 - **Program Stop**: Manual rest command → Auto-send rest command 'd'
+- **Button Response**: Duplicate triggers → Smart debounce
+- **Debug Control**: Cannot control → Selective display
 
-## Technical Improvement Points
+### Data Display
+- **Command Display**: Encoded format → Readable format
+- **Serial Display**: Chaotic format → Clear and unified
+- **Log Management**: 100-entry limit → 500-entry limit
+- **Error Prompts**: Unfriendly → Detailed and friendly
 
-### WebSocket Optimization
-- Heartbeat interval: 4s → 3s
-- Heartbeat timeout: 15s → 10s  
-- Health check: 10s → 5s
-- Reconnection delay: 1s → 0.5s
+### Advanced Features
+- **WiFi Configuration**: Manual method search → Auto-display configuration interface
+- **WiFi Security**: Plain text password display → Masked display and memory cleanup
+- **Sensor Data**: Split errors → Complete and accurate
+- **Response Speed**: 60-second timeout → 5-15 seconds (4-12x improvement)
 
-### Timeout Time Optimization
-- Sensor reading: 60s → 5s
-- Normal commands: 60s → 10s
-- Complex actions: 60s → 15s
-
-### Stop Function Optimization
-- WebSocket command stop check: No check → Check every 100ms
-- Long delay stop check: No check → Segmented check (every 100ms)
-- Stop response speed: 8 seconds → 100ms
-- Program stop handling: Manual rest command → Auto-send 'd' command
-
-### Serial Connection Optimization
-- Auto-select unique available port
-- Hardware disconnection 3-second timeout detection
-- Data integrity validation
-- Intelligent state management
-
-### Interface Optimization
-- Debug information controllable display
-- Quick Connect one-click auto-connection
-- Configuration auto-save and restore
-- Real-time state synchronization
-- Stop button red background
-- Debounce mechanism protection
-- Program stop instant response
-
-### Program Control Optimization
-- Global stopExecution flag
-- Stop check in loops
-- 1-second time debounce
-- State debounce protection
-- Intelligent IP detection
-
-### Safety Improvements
-- Null safety checks
-- Enhanced error handling
-- Safe data parsing
-- Exception recovery mechanism
-
-### Configuration Management Optimization
-- localStorage persistence
-- Connection history records
-- Intelligent IP fallback
-- Auto-configuration recovery
-
-These modifications comprehensively improved the stability, response speed, safety, and user experience of WebServer and WebCodingBlocks, making the system more intelligent, stable, and user-friendly. The system now has complete error handling, intelligent configuration management, flexible program control, and other advanced features.
-
-## Stop Function Major Improvement Detailed Description
-
-### Problem Background
-In previous versions, long-running gait commands (such as `kwkF` with 20-second timeout) and long delays (such as 10-second delays) would block program execution. Users had to wait for command completion or timeout after clicking the stop button, with response times of 8 seconds or more, resulting in poor user experience.
-
-### Technical Solution
-
-#### 1. WebSocket Client Stop Check Optimization
-**File**: `js/petoi_async_client.js`
-**Modification**: Added stop flag check timer in `sendCommand` method
-```javascript
-// Add stop flag check timer (check every 100ms)
-const stopCheckInterval = setInterval(() => {
-    if (typeof stopExecution !== 'undefined' && stopExecution) {
-        clearTimeout(timeoutId);
-        clearInterval(stopCheckInterval);
-        this.pendingTasks.delete(taskId);
-        reject(new Error("Program execution stopped by user"));
-    }
-}, 100);
-```
-
-#### 2. Code Generator Delay Optimization
-**File**: `blocks/generators.js`
-**Modification**: Changed all long delays (>100ms) to segmented checking
-```javascript
-// For long delays, segment check stop flag
-if (delayMs > 100) {
-    code += `await (async () => {
-  const checkInterval = 100; // Check every 100ms
-  const totalChecks = Math.ceil(${delayMs} / checkInterval);
-  for (let i = 0; i < totalChecks; i++) {
-    checkStopExecution();
-    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
-  }
-})();\n`;
-}
-```
-
-#### 3. Auto Rest Command Sending
-**File**: `programblockly.html`
-**Modification**: Auto-send rest command 'd' when program stops
-```javascript
-if (e.message === "Program execution stopped by user") {
-    await asyncLog(getText("programExecutionStopped"));
-    try {
-        await asyncLog(getText("programEndingRestCommand"));
-        await webRequest("d", 5000, true, null, true); // Bypass stop flag check
-        console.log("Rest command sent successfully");
-    } catch (restError) {
-        console.error(getText("restCommandFailed") + restError.message);
-    }
-}
-```
-
-### Modified Blocks
-The delay logic of all the following blocks has been optimized:
-- Gait actions (gait)
-- Posture actions (posture)
-- Acrobatic moves (acrobatic_moves)
-- Delay (delay_ms)
-- Custom commands (send_custom_command)
-- Play melody (play_melody)
-- Joint angle settings (set_joints_angle_seq, set_joints_angle_sim, set_joint_angle)
-- Arm actions (arm_action)
-- Skill file execution (action_skill_file)
-
-### User Experience Improvement
-- **Stop Response Speed**: Improved from 8 seconds to 100ms (80x improvement)
-- **Stop Button Feedback**: Red background after clicking Run Code, providing visual feedback
-- **Auto Rest**: Auto-send 'd' command when program stops, robot enters rest state
-- **Instant Interruption**: Long commands and delays can be interrupted immediately
-- **Error Handling**: Errors during stopping are handled gracefully, not affecting user experience
-
-### Technical Advantages
-- **Non-blocking Check**: Use timer for non-blocking stop flag checking
-- **Resource Cleanup**: Properly clean timers and task queues, avoiding memory leaks
-- **Backward Compatibility**: No impact on existing functionality, only enhanced stop response capability
-- **Performance Optimization**: 100ms check interval balances response speed and performance overhead
-
-## New Features Detailed Description
-
-### 1. Stop Function Implementation
-- **Global Stop Flag**: `stopExecution` variable controls program execution
-- **Stop Button**: Red background, eye-catching display
-- **Loop Support**: Check stop flag at each step in loops
-- **Anti-Duplicate Prompts**: Fixed duplicate stop message printing
-
-### 2. Show Commands Function Fix
-- **Command Display**: Display actually sent commands instead of JSON format
-- **Sensor Fix**: Fixed sensor returning 0 in show commands mode
-- **Logic Separation**: Separated command display from debug information
-
-### 3. Run Code Debounce Mechanism
-- **Time Debounce**: Repeated clicks within 1 second ignored
-- **State Debounce**: New clicks ignored when program running
-- **Intelligent IP Detection**: Auto-detect invalid IP and execute quick connect
-
-### 4. Null Safety Fix
-- **Data Check**: Added null checks to all parsing functions
-- **Error Handling**: Improved error handling and recovery mechanism
-- **System Stability**: Prevent crashes caused by null references
-
-### 5. Configuration Persistence Enhancement
-- **Auto-Save**: Auto-save IP configuration after successful connection
-- **Intelligent Fallback**: Auto-try saved IP when serial fails
-- **History Records**: Maintain connection history, support multiple devices
-
-### 6. Sensor Auto-Print Optimization
-- **Logic Separation**: Sensor auto-print controlled by showDebug
-- **User Control**: Default only manual print, auto-print optional
-- **Clear Separation**: Separated command display from sensor results 
+These modifications comprehensively improve the stability, response speed, user experience, and internationalization support of WebServer and WebCodingBlocks, making the system more intelligent, user-friendly, and internationalized. Significant improvements have been made particularly in connection management, program control, data display, and advanced features. 
