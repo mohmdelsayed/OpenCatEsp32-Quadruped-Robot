@@ -433,8 +433,7 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
           if (webServerConnected)
           {
 //            PTHL("Successfully connected Wifi to IP Address: ", WiFi.localIP());
-            printToAllPorts("Successfully connected Wifi to IP Address: ",0);
-            printToAllPorts(WiFi.localIP());
+            printToAllPorts("Successfully connected Wifi to IP Address: " + WiFi.localIP().toString());
 #ifdef I2C_EEPROM_ADDRESS
                 i2c_eeprom_write_byte(EEPROM_WIFI_MANAGER, true);
 #else
@@ -452,8 +451,7 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
       }
       else
       {
-        printToAllPorts("Wifi already connected to IP Address: ",0);
-        printToAllPorts(WiFi.localIP());
+        printToAllPorts("Wifi already connected to IP Address: " + WiFi.localIP().toString());
         PTLF("Web server should already be running");
         PTLF("Press the BOOT key to reboot and use Wifi manager.");
         PTLF("Hold the BOOT key and count down 10 if you want to clear the previous Wifi credentials.");

@@ -146,7 +146,10 @@
           {
             const parsedConfig = JSON.parse(localStorageConfig);
             config = { ...config, ...parsedConfig };
-            console.log('Configuration loaded from localStorage:', config);
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log('Configuration loaded from localStorage:', config);
+            }
             return; // 如果从localStorage成功加载，就不需要从文件加载了
           } catch (parseError)
           {
@@ -156,7 +159,10 @@
         }
 
         // 如果localStorage中没有配置或解析失败，使用默认配置
-        console.log('No localStorage config found, using default configuration');
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log('No localStorage config found, using default configuration');
+        }
       } catch (error)
       {
         console.warn('Failed to load config, using defaults:', error);
@@ -186,7 +192,10 @@
         try
         {
           localStorage.setItem('petoiConfig', JSON.stringify(config));
-          console.log('Configuration saved to localStorage:', config);
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log('Configuration saved to localStorage:', config);
+          }
         } catch (localStorageError)
         {
           console.warn('Failed to save to localStorage:', localStorageError);
@@ -194,7 +203,10 @@
 
         // 注意：由于浏览器安全限制，无法直接写入文件
         // 这里只是更新内存中的配置，实际保存需要服务器端支持
-        console.log('Configuration updated:', config);
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log('Configuration updated:', config);
+        }
       } catch (error)
       {
         console.error('Failed to save config:', error);
@@ -206,14 +218,20 @@
     {
       if (!config.lastKnownIP)
       {
-        console.log('No configured IP address available');
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log('No configured IP address available');
+        }
         return false;
       }
 
       // 如果当前IP就是配置的IP，说明已经连接成功，不需要重复连接
       if (currentDeviceIP === config.lastKnownIP)
       {
-        console.log(`Already connected to configured IP: ${config.lastKnownIP}`);
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(`Already connected to configured IP: ${config.lastKnownIP}`);
+        }
 
         // 确保按钮显示正确的IP地址
         const quickConnectBtn = document.getElementById('quickConnectBtn');
@@ -222,13 +240,19 @@
           quickConnectBtn.textContent = currentDeviceIP;
           quickConnectBtn.style.backgroundColor = '#4CAF50';
           quickConnectBtn.setAttribute('data-connected', 'true');
-          console.log(`Updated Quick Connect button to show IP: ${currentDeviceIP}`);
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log(`Updated Quick Connect button to show IP: ${currentDeviceIP}`);
+          }
         }
 
         return true;
       }
 
-      console.log(`Trying to connect with configured IP: ${config.lastKnownIP}`);
+      if (typeof showDebug !== 'undefined' && showDebug)
+      {
+        console.log(`Trying to connect with configured IP: ${config.lastKnownIP}`);
+      }
 
       try
       {
@@ -238,7 +262,10 @@
 
         // 如果连接成功，更新当前IP地址
         currentDeviceIP = config.lastKnownIP;
-        console.log(`Successfully connected with configured IP: ${currentDeviceIP}`);
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(`Successfully connected with configured IP: ${currentDeviceIP}`);
+        }
 
         // 更新Quick Connect按钮状态
         const quickConnectBtn = document.getElementById('quickConnectBtn');
@@ -252,7 +279,10 @@
         // 更新配置中的连接时间并保存
         config.lastConnectedTime = new Date().toISOString();
         await saveConfig();
-        console.log('Configuration updated with successful connection:', config);
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log('Configuration updated with successful connection:', config);
+        }
 
         // 更新make_connection积木中的IP地址
         const makeConnectionBlocks = workspace.getBlocksByType('make_connection');
@@ -260,13 +290,19 @@
         {
           // 更新第一个make_connection积木块的IP_ADDRESS字段
           makeConnectionBlocks[0].setFieldValue(currentDeviceIP, 'IP_ADDRESS');
-          console.log(`Updated make_connection block IP to: ${currentDeviceIP}`);
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log(`Updated make_connection block IP to: ${currentDeviceIP}`);
+          }
         }
 
         return true;
       } catch (error)
       {
-        console.log(`Failed to connect with configured IP ${config.lastKnownIP}:`, error);
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(`Failed to connect with configured IP ${config.lastKnownIP}:`, error);
+        }
         return false;
       }
     }
@@ -978,8 +1014,98 @@
       document.addEventListener('keydown', handleEscKey);
     }
 
+    // 防抖变量
+    let lastRunCodeTime = 0;
+    let isProgramRunning = false;
+
+    // IP地址格式验证函数
+    function isValidIPAddress(ip)
+    {
+      if (!ip || typeof ip !== 'string')
+      {
+        return false;
+      }
+
+      // 检查是否为192.168.4.1
+      if (ip === '192.168.4.1')
+      {
+        return false; // 返回false表示需要quick connect
+      }
+
+      // 检查IP地址格式
+      const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      return ipRegex.test(ip);
+    }
+
     function runCode()
     {
+      const now = Date.now();
+
+      // 防抖检查：如果距离上次点击小于1秒，则不执行
+      if (now - lastRunCodeTime < 1000)
+      {
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("debounceTimeInterval"));
+        }
+        return;
+      }
+
+      // 检查程序是否正在运行
+      if (isProgramRunning)
+      {
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("debounceProgramRunning"));
+        }
+        return;
+      }
+
+      // 获取积木中的IP地址
+      const makeConnectionBlocks = workspace.getBlocksByType('make_connection');
+      let blockIP = '192.168.4.1'; // 默认IP
+
+      if (makeConnectionBlocks.length > 0)
+      {
+        const mainBlock = makeConnectionBlocks[0];
+        blockIP = mainBlock.getFieldValue('IP_ADDRESS') || '192.168.4.1';
+      }
+
+      // 检查积木中的IP地址是否需要自动执行quick connect
+      if (!isValidIPAddress(blockIP))
+      {
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("detectedInvalidIP").replace('{ip}', blockIP));
+        }
+        quickConnect().then(() =>
+        {
+          // quick connect完成后，延迟1秒再执行runCode
+          setTimeout(() =>
+          {
+            executeRunCode();
+          }, 1000);
+        }).catch((error) =>
+        {
+          console.error("Quick connect失败:", error);
+          // 即使quick connect失败，也尝试执行runCode
+          executeRunCode();
+        });
+        return;
+      }
+
+      // 直接执行runCode
+      executeRunCode();
+    }
+
+    function executeRunCode()
+    {
+      const now = Date.now();
+      lastRunCodeTime = now;
+      isProgramRunning = true;
+
+      console.log(getText("programExecutionStarted"));
+
       window.LoopTrap = 1000;
       Blockly.JavaScript.INFINITE_LOOP_TRAP =
         'if (--window.LoopTrap < 0) throw "无限循环";\n';
@@ -991,6 +1117,7 @@
       {
         console.error(getText("noConnectionBlockError") || "错误：请添加一个'Connect with IP'积木块并将代码连接在其下方！");
         alert(getText("noConnectionBlockError") || "错误：请添加一个'Connect with IP'积木块并将代码连接在其下方！");
+        isProgramRunning = false;
         return;
       }
 
@@ -1030,6 +1157,10 @@ ${code}
 })().catch((e) => {
   console.error(getText("networkRequestError") + ": " + e.message);
   alert(getText("networkRequestError") + ": " + e.message);
+}).finally(() => {
+  // 程序执行完成后，重置运行状态
+  isProgramRunning = false;
+  console.log(getText("programExecutionCompleted"));
 });
 `
       try
@@ -1041,6 +1172,8 @@ ${code}
         console.info(runCodeBlock);
         console.error(getText("networkRequestError") + ": " + e.message);
         alert(getText("networkRequestError") + ": " + e.message);
+        // 发生错误时也要重置运行状态
+        isProgramRunning = false;
       }
     }
 
@@ -1569,8 +1702,8 @@ ${code}
       // 使用原生DOM方法确保立即渲染，改为添加到末尾
       logDiv.appendChild(messageDiv);
 
-      // 保持最多显示100条记录
-      while (logDiv.children.length > 100)
+      // 保持最多显示500条记录
+      while (logDiv.children.length > 500)
       {
         logDiv.removeChild(logDiv.firstChild);
       }
@@ -2181,7 +2314,10 @@ ${code}
         if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
         {
           resetQuickConnectButton();
-          console.log('Reset Quick Connect button (no WebSocket connection)');
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log('Reset Quick Connect button (no WebSocket connection)');
+          }
         } else
         {
           // 如果有IP地址，保持按钮显示IP
@@ -2192,7 +2328,10 @@ ${code}
             quickConnectBtn.style.backgroundColor = '#4CAF50';
             quickConnectBtn.setAttribute('data-connected', 'true');
           }
-          console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
+          }
         }
         // 抛出异常，让调用者知道连接失败
         throw error;
@@ -2331,7 +2470,10 @@ ${code}
           await openSerialPort();
         } catch (error)
         {
-          console.log('Serial port connection failed, trying configured IP...');
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log('Serial port connection failed, trying configured IP...');
+          }
 
           // 串口连接失败，尝试使用配置文件中的IP地址
           const connectedWithConfig = await tryConnectWithConfigIP();
@@ -2634,7 +2776,10 @@ ${code}
           if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
           {
             resetQuickConnectButton();
-            console.log('Reset Quick Connect button (no WebSocket connection)');
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log('Reset Quick Connect button (no WebSocket connection)');
+            }
           } else
           {
             // 如果有IP地址，保持按钮显示IP
@@ -2645,7 +2790,10 @@ ${code}
               quickConnectBtn.style.backgroundColor = '#4CAF50';
               quickConnectBtn.setAttribute('data-connected', 'true');
             }
-            console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
+            }
           }
 
           // 强制重新调整工作区大小

@@ -50,8 +50,10 @@ class PetoiAsyncClient
                 
                 // 设置心跳超时
                 this.heartbeatTimeout = setTimeout(() => {
-                    console.log(getText('heartbeatTimeout'));
-                    this.handleConnectionFailure('Heartbeat timeout');
+                    if (typeof showDebug !== 'undefined' && showDebug) {
+                        console.log(getText('heartbeatTimeout'));
+                    }
+                    this.handleConnectionFailure(getText('heartbeatTimeout'));
                 }, this.heartbeatTimeoutMs);
             }
         }, this.heartbeatIntervalMs);
@@ -116,7 +118,9 @@ class PetoiAsyncClient
 
         // 检查WebSocket状态
         if (this.ws.readyState !== WebSocket.OPEN) {
-            console.log('WebSocket not in OPEN state, attempting reconnect...');
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log('WebSocket not in OPEN state, attempting reconnect...');
+            }
             this.handleConnectionFailure('WebSocket not open');
             return false;
         }
@@ -124,7 +128,9 @@ class PetoiAsyncClient
         // 检查最后活动时间
         const now = Date.now();
         if (now - this.lastActivityTime > this.heartbeatTimeoutMs * 2) {
-            console.log('No activity detected, attempting reconnect...');
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log('No activity detected, attempting reconnect...');
+            }
             this.handleConnectionFailure('No activity detected');
             return false;
         }
@@ -137,7 +143,9 @@ class PetoiAsyncClient
      */
     handleConnectionFailure(reason)
     {
-        console.log(`Connection failure: ${reason}`);
+        if (typeof showDebug !== 'undefined' && showDebug) {
+            console.log(getText('connectionFailure').replace('{reason}', reason));
+        }
         this.connected = false;
         this.stopHeartbeat();
         this.stopHealthCheck();
@@ -233,21 +241,29 @@ class PetoiAsyncClient
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // 指数退避
-            console.log(getText('reconnectAttempt').replace('{current}', this.reconnectAttempts).replace('{max}', this.maxReconnectAttempts) + ` (delay: ${delay}ms)`);
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log(getText('reconnectAttempt').replace('{current}', this.reconnectAttempts).replace('{max}', this.maxReconnectAttempts) + ` (delay: ${delay}ms)`);
+            }
             
             setTimeout(() => {
                 this.connect().catch(error => {
-                    console.error('Reconnect failed:', error);
+                    if (typeof showDebug !== 'undefined' && showDebug) {
+                        console.error('Reconnect failed:', error);
+                    }
                     if (this.reconnectAttempts < this.maxReconnectAttempts) {
                         this.handleReconnect();
                     } else {
-                        console.error(getText('maxReconnectAttempts'));
+                        if (typeof showDebug !== 'undefined' && showDebug) {
+                            console.error(getText('maxReconnectAttempts'));
+                        }
                         this.eventTarget.dispatchEvent(new CustomEvent('maxReconnectAttemptsReached'));
                     }
                 });
             }, delay);
         } else {
-            console.error(getText('maxReconnectAttempts'));
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.error(getText('maxReconnectAttempts'));
+            }
             this.eventTarget.dispatchEvent(new CustomEvent('maxReconnectAttemptsReached'));
         }
     }
