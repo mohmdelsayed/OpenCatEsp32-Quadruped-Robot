@@ -10,7 +10,7 @@ Blockly.JavaScript.forBlock["gait"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `console.log(await webRequest("${cmd}", 20000, true));\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", 20000, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -22,7 +22,7 @@ Blockly.JavaScript.forBlock["posture"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `console.log(await webRequest("${cmd}", 10000, true));\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", 10000, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -34,7 +34,7 @@ Blockly.JavaScript.forBlock["acrobatic_moves"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `console.log(await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true));\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -57,7 +57,7 @@ Blockly.JavaScript.forBlock["gyro_control"] = function (block) {
     const state = block.getFieldValue("STATE");
     const value = state === "1" ? "U" : "u";
     const command = encodeCommand("g", [value]);
-    return `console.log(await webRequest("${command}", 5000, true));\n`;
+    return `(async () => { const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result); })();\n`;
 };
 
 // 代码生成:获取传感器输入代码生成器
@@ -78,7 +78,7 @@ Blockly.JavaScript.forBlock["send_custom_command"] = function (block) {
     );
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `console.log(await webRequest(${command}, ${COMMAND_TIMEOUT_MAX}, true));\n`;
+    let code = `(async () => { const result = await webRequest(${command}, ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -100,7 +100,7 @@ Blockly.JavaScript.forBlock["console_log_variable"] = function (block) {
 Blockly.JavaScript.forBlock["play_note"] = function (block) {
     const note = block.getFieldValue("NOTE");
     const duration = block.getFieldValue("DURATION");
-    return `console.log(await webRequest("b ${note} ${duration}", 5000, true));\n`;
+    return `(async () => { const result = await webRequest("b ${note} ${duration}", 5000, true); if (result !== null) console.log(result); })();\n`;
 };
 
 // 代码生成:播放旋律代码生成器
@@ -120,14 +120,16 @@ Blockly.JavaScript.forBlock["play_melody"] = function (block) {
         })
         .filter((item) => item.length == 2);
     const cmdParams = params.flat();
-    // const beatDuration = 16 * 1000;
-    // const duration = Math.ceil(params.reduce((acc, item) => acc + (beatDuration / item[1]), 0) + 2000);
-    // const encodeCmd = encodeCommand("b", cmdParams);
+    
+    // 生成base64编码的实际命令
     let encodeCmd = encodeCommand("B", cmdParams);
-    console.log(decodeCommand(encodeCmd));
+    
+    // 生成可读的显示格式
+    let displayCmd = `B ${cmdParams.join(" ")}`;
+    
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.ceil(delay * 1000);
-    let code = `console.log(await webRequest("${encodeCmd}", ${COMMAND_TIMEOUT_MAX}, true));\n`;
+    let code = `(async () => { const result = await webRequest("${encodeCmd}", ${COMMAND_TIMEOUT_MAX}, true, "${displayCmd}"); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -207,7 +209,7 @@ javascript.javascriptGenerator.forBlock["set_joints_angle_sim_raw"] = function (
         const delay = block.getFieldValue("DELAY");
         const delayMs = Math.ceil(delay * 1000);
         const command = encodeCommand(token, angleParams);
-        let code = `console.log(await webRequest("${command}", 30000, true));\n`;
+        let code = `(async () => { const result = await webRequest("${command}", 30000, true); if (result !== null) console.log(result); })();\n`;
         if (delayMs > 0) {
             code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
         }
@@ -302,7 +304,7 @@ javascript.javascriptGenerator.forBlock["arm_action"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `console.log(await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true));\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -326,7 +328,7 @@ javascript.javascriptGenerator.forBlock["action_skill_file"] = function (
     const token = skillContent.token;
     const list = skillContent.data.flat();
     const cmd = encodeCommand(token, list);
-    let code = `console.log(await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true));\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
     if (delay > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delay}));\n`;
     }
@@ -357,7 +359,7 @@ javascript.javascriptGenerator.forBlock["set_analog_output"] = function (
     const pin = block.getFieldValue("PIN");
     const value = block.getFieldValue("VALUE");
     const command = encodeCommand("Wa", [pin, value]);
-    return `console.log(await webRequest("${command}", 5000, true));\n`;
+    return `(async () => { const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result); })();\n`;
 };
 
 // 代码生成:设置数字输出的代码
@@ -367,7 +369,7 @@ javascript.javascriptGenerator.forBlock["set_digital_output"] = function (
     const pin = block.getFieldValue("PIN");
     const value = block.getFieldValue("VALUE");
     const command = encodeCommand("Wd", [pin, value]);
-    return `console.log(await webRequest("${command}", 5000, true));\n`;
+    return `(async () => { const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result); })();\n`;
 };
 
 // 代码生成:获取数字输入代码生成器 - 移除重复定义，改为异步
@@ -377,6 +379,10 @@ Blockly.JavaScript.forBlock["get_digital_input"] = function (block) {
     let code = `await (async function() {
     const rawResult = await webRequest("${command}", 5000, true);
     const result = parseSingleResult(rawResult);
+    // 只在非showSentCommands模式下打印结果
+    if (typeof showSentCommands === 'undefined' || !showSentCommands) {
+      console.log(result);
+    }
     return result;
   })()`;
     return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
@@ -389,6 +395,10 @@ Blockly.JavaScript.forBlock["get_analog_input"] = function (block) {
     let code = `await (async function() {
     const rawResult = await webRequest("${command}", 5000, true);
     const result = parseSingleResult(rawResult);
+    // 只在非showSentCommands模式下打印结果
+    if (typeof showSentCommands === 'undefined' || !showSentCommands) {
+      console.log(result);
+    }
     return result;
   })()`;
     return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
@@ -411,6 +421,10 @@ javascript.javascriptGenerator.forBlock["getUltrasonicDistance"] = function (
     let code = `await (async function() {
     const rawResult = await webRequest("${command}", 5000, true);
     const result = parseSingleResult(rawResult);
+    // 只在非showSentCommands模式下打印结果
+    if (typeof showSentCommands === 'undefined' || !showSentCommands) {
+      console.log(result);
+    }
     return result;
   })()`;
     return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
@@ -489,11 +503,17 @@ function decodeCommand(content) {
 }
 
 function parseSingleResult(rawResult) {
+    // 检查rawResult是否为null或undefined
+    if (!rawResult) {
+        console.warn('parseSingleResult: rawResult is null or undefined');
+        return 0;
+    }
+    
     // 首先尝试提取=号后的数字
-    if (rawResult && rawResult.includes("=")) {
+    if (rawResult.includes("=")) {
         const lines = rawResult.split("\\\\n");
         for (let i = 0; i < lines.length; i++) {
-            if (lines[i].trim() === "=" && i + 1 < lines.length) {
+            if (lines[i] && lines[i].trim() === "=" && i + 1 < lines.length) {
                 const num = parseInt(lines[i + 1].trim());
                 if (!isNaN(num)) {
                     return num;
@@ -503,7 +523,7 @@ function parseSingleResult(rawResult) {
     }
 
     // 尝试从单行格式中提取数字，如"4094 R"
-    const words = rawResult.trim().split(/\\\\s+/);
+    const words = rawResult.trim().split(/\s+/);
     for (const word of words) {
         const num = parseInt(word);
         if (!isNaN(num)) {
@@ -519,8 +539,14 @@ function parseSingleResult(rawResult) {
 //-23.00 20.00 size = 42 56
 //X
 function parseCameraCoordinateResult(rawResult) {
+    // 检查rawResult是否为null或undefined
+    if (!rawResult) {
+        console.warn('parseCameraCoordinateResult: rawResult is null or undefined');
+        return [];
+    }
+    
     const lines = rawResult.split("\n");
-    if (lines.length >= 3 && lines[2].includes("X")) {
+    if (lines.length >= 3 && lines[2] && lines[2].includes("X")) {
         const args = lines[0].split("\t");
         const x = parseFloat(args[0]);
         const y = parseFloat(args[1]);
@@ -533,8 +559,14 @@ function parseCameraCoordinateResult(rawResult) {
 
 // rawResult is string like "0\t1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t11\t12\t13\t14\t15\t\n0,\t0,\t0,\t0,\t0,\t0,\t0,\t0,\t30,\t30,\t30,\t30,\t30,\t30,\t30,\t30,\t\nj\n"
 function parseAllJointsResult(rawResult) {
+    // 检查rawResult是否为null或undefined
+    if (!rawResult) {
+        console.warn('parseAllJointsResult: rawResult is null or undefined');
+        return [];
+    }
+    
     const lines = rawResult.split("\n");
-    if (lines.length >= 3 && lines[2].includes("j")) {
+    if (lines.length >= 3 && lines[2] && lines[2].includes("j")) {
         const indexs = lines[0]
             .split("\t")
             .filter((item) => item.length > 0)

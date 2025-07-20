@@ -93,7 +93,7 @@ async function closeConnection() {
 // 全局异步客户端类定义
 // PetoiAsyncClient 类已移动到 petoi_async_client.js 文件中
 
-function webRequest(command, timeout = 30000, needResponse = true) {
+function webRequest(command, timeout = 30000, needResponse = true, displayCommand = null) {
   return new Promise(async (resolve, reject) =>
     {
       try
@@ -103,11 +103,32 @@ function webRequest(command, timeout = 30000, needResponse = true) {
           reject(new Error(getText("noConnectionEstablished")));
           return;
         }
+        
+        // 如果showSentCommands开关激活，打印发送的命令
+        if (typeof showSentCommands !== 'undefined' && showSentCommands) {
+          // 使用displayCommand参数或默认处理
+          let commandToDisplay = displayCommand || command;
+          if (!displayCommand && command.startsWith("b64:")) {
+            try {
+              const decoded = decodeCommand(command);
+              if (decoded && decoded.token && decoded.params) {
+                commandToDisplay = `${decoded.token} ${decoded.params.join(" ")}`;
+              }
+            } catch (error) {
+              // 如果解码失败，保持原命令
+              commandToDisplay = command;
+            }
+          }
+          console.log(getText("sendingCommand") + commandToDisplay);
+        }
+        
         let result = await window.client.sendCommand(command, timeout);
         if (Array.isArray(result) && result.length == 1) {
           result = result[0];
         }
+        
         // 根据 needResponse 参数决定是否返回结果
+        // 注意：即使showSentCommands激活，我们也需要返回实际结果给传感器积木块使用
         resolve(needResponse ? result : true);
       } catch (error) {
         console.error(getText("httpRequestError"), error);
@@ -126,6 +147,26 @@ function webBatchRequest(commands, timeout = 30000, needResponse = true)
         reject(new Error(getText("noConnectionEstablished")));
         return;
       }
+      
+      // 如果showSentCommands开关激活，打印发送的命令
+      if (typeof showSentCommands !== 'undefined' && showSentCommands) {
+        // 解码base64命令并显示可读格式
+        const displayCommands = commands.map(cmd => {
+          if (cmd.startsWith("b64:")) {
+            try {
+              const decoded = decodeCommand(cmd);
+              if (decoded && decoded.token && decoded.params) {
+                return `${decoded.token} ${decoded.params.join(" ")}`;
+              }
+            } catch (error) {
+              // 如果解码失败，保持原命令
+            }
+          }
+          return cmd;
+        });
+        console.log(getText("sendingCommand") + displayCommands.join(', '));
+      }
+      
       const result = await window.client.sendCommand(commands, timeout);
       resolve(needResponse ? result : true);
     } catch (error)
@@ -153,4 +194,13 @@ function addWebSocketEventListeners(eventName, callback)
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 辅助函数：根据showSentCommands状态决定是否打印webRequest结果
+function logWebRequestResult(result) {
+  // 如果showSentCommands激活，则不打印webRequest的返回值
+  if (typeof showSentCommands !== 'undefined' && showSentCommands) {
+    return;
+  }
+  console.log(result);
 }

@@ -9,7 +9,7 @@ class PetoiAsyncClient
     constructor(baseUrl = null)
     {
         this.baseUrl = baseUrl || `ws://${window.location.hostname}:81`;
-        this.taskTimeout = 60000; // 60秒超时（增加超时时间以处理长时间传感器数据读取）
+        this.taskTimeout = 20000; // 20秒默认超时（优化超时时间，提高响应速度）
         this.ws = null;
         this.connected = false;
         this.pendingTasks = new Map();
@@ -285,6 +285,13 @@ class PetoiAsyncClient
     {
         try {
             console.log('handleMessage', data);
+            
+            // 检查data是否为null或undefined
+            if (!data) {
+                console.warn('Received null or undefined data in handleMessage');
+                return;
+            }
+            
             // 清理数据中的特殊字符
             const cleanData = data.replace(/[\r\n\t\f\v]/g, ' ').trim();
             const message = JSON.parse(cleanData);
@@ -354,12 +361,46 @@ class PetoiAsyncClient
     }
 
     /**
+     * 获取命令的超时时间
+     * @param {string|Array} command - 命令或命令数组
+     * @returns {number} - 超时时间（毫秒）
+     */
+    getCommandTimeout(command) {
+        const commands = Array.isArray(command) ? command : [command];
+        
+        // 检查是否为传感器读取命令
+        const isSensorCommand = commands.some(cmd => 
+            cmd.includes('get_digital_input') || 
+            cmd.includes('get_analog_input') || 
+            cmd.includes('get_sensor_input') ||
+            cmd.includes('get_ultrasonic_distance') ||
+            cmd.includes('get_joint_angle') ||
+            cmd.includes('get_all_joint_angles')
+        );
+        
+        // 检查是否为复杂动作命令
+        const isComplexAction = commands.some(cmd => 
+            cmd.includes('acrobatic_moves') ||
+            cmd.includes('high_difficulty_action') ||
+            cmd.includes('complex_sequence')
+        );
+        
+        if (isSensorCommand) {
+            return 5000; // 传感器读取：5秒超时
+        } else if (isComplexAction) {
+            return 15000; // 复杂动作：15秒超时
+        } else {
+            return 10000; // 普通命令：10秒超时
+        }
+    }
+
+    /**
      * 发送命令
      * @param {string|Array} command - 单个命令或命令数组
-     * @param {number} timeout - 超时时间（毫秒）
+     * @param {number} timeout - 超时时间（毫秒），如果不指定则自动判断
      * @returns {Promise} - 返回命令执行完成后的结果
      */
-    async sendCommand(command, timeout = this.taskTimeout)
+    async sendCommand(command, timeout = null)
     {
         // 检查连接状态
         if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -383,6 +424,9 @@ class PetoiAsyncClient
             throw new Error('Invalid command');
         }
 
+        // 如果没有指定超时时间，则自动判断
+        const actualTimeout = timeout || this.getCommandTimeout(commands);
+
         return new Promise((resolve, reject) => {
             const taskId = Date.now().toString();
             const message = {
@@ -394,8 +438,8 @@ class PetoiAsyncClient
 
             const timeoutId = setTimeout(() => {
                 this.pendingTasks.delete(taskId);
-                reject(new Error(getText('commandTimeout') + ' ' + taskId + ' ' + commands.join(' ')));
-            }, timeout);
+                reject(new Error(getText('commandTimeout') + ' ' + taskId + ' ' + commands.join(' ') + ' (timeout: ' + actualTimeout + 'ms)'));
+            }, actualTimeout);
 
             this.pendingTasks.set(taskId, {
                 resolve: (result) => {
@@ -413,7 +457,10 @@ class PetoiAsyncClient
             });
             
             const messageStr = JSON.stringify(message);
-            console.log('send message', messageStr);
+            // 只在debug模式下打印完整的JSON消息
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log('send message', messageStr);
+            }
             
             try {
                 this.ws.send(messageStr);
