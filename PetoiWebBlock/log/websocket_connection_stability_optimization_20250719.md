@@ -59,7 +59,7 @@ this.heartbeatIntervalMs = 10000; // 10秒发送一次心跳
 this.heartbeatTimeoutMs = 15000;  // 15秒没有响应就重连
 
 // 优化后
-this.heartbeatIntervalMs = 4000;  // 4秒发送一次心跳（快速响应）
+this.heartbeatIntervalMs = 3000;  // 3秒发送一次心跳（快速响应）
 this.heartbeatTimeoutMs = 15000;  // 15秒没有响应就重连（快速检测）
 this.healthCheckIntervalMs = 10000; // 10秒检查一次连接健康状态
 ```
@@ -100,7 +100,7 @@ async sendCommand(command, timeout = this.taskTimeout) {
 
 ### 优化后
 - ✅ 连接稳定性显著提升
-- ✅ 快速响应（4-5秒心跳检测）
+- ✅ 快速响应（3-5秒心跳检测）
 - ✅ 自动重连机制
 - ✅ 完善的错误处理
 - ✅ 详细的调试信息
@@ -110,8 +110,8 @@ async sendCommand(command, timeout = this.taskTimeout) {
 
 | 指标 | 优化前 | 优化后 |
 |------|--------|--------|
-| 心跳间隔 | 10秒 | 4-5秒 |
-| 心跳超时 | 15秒 | 15秒 |
+| 心跳间隔 | 10秒 | 3-5秒 |
+| 心跳超时 | 15秒 | 10秒 |
 | 健康检查 | 无 | 10秒 |
 | 最大重连次数 | 无限制 | 5次 |
 | 最大连接数 | 无限制 | 5个 |
@@ -122,8 +122,8 @@ async sendCommand(command, timeout = this.taskTimeout) {
 采用经典的**客户端-服务端心跳设计模式**：
 
 ```javascript
-// 客户端主动发送（4秒间隔）
-this.heartbeatIntervalMs = 4000;
+// 客户端主动发送（3秒间隔）
+this.heartbeatIntervalMs = 3000;
 
 // 服务端被动检查（5秒间隔）
 const unsigned long HEARTBEAT_INTERVAL = 5000;
@@ -201,14 +201,14 @@ const unsigned long HEARTBEAT_INTERVAL = 5000;
 本次WebSocket连接稳定性优化成功解决了以下问题：
 
 1. **连接稳定性**: 从频繁断开到稳定连接
-2. **响应速度**: 从10秒延迟到4-5秒快速响应
+2. **响应速度**: 从10秒延迟到3-5秒快速响应
 3. **错误恢复**: 从手动重连到自动恢复
 4. **用户体验**: 从操作卡顿到流畅响应
 
 优化采用了成熟的客户端-服务端心跳设计模式，在保证稳定性的同时实现了快速响应，完全满足了编程页面连续点击运行代码的需求。
 
 **关键成功因素**：
-- 合理的参数配置（4-5秒心跳间隔）
+- 合理的参数配置（3-5秒心跳间隔）
 - 完善的错误处理机制
 - 自动重连和恢复策略
 - 详细的调试和监控能力

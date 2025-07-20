@@ -601,7 +601,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 控制台积木：紫色
+                colour: "#4361EE", // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -630,7 +630,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 控制台积木：紫色
+                colour: "#4361EE", // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -660,7 +660,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 控制台积木：紫色
+                colour: "#4361EE", // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -690,7 +690,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 控制台积木：紫色
+                colour: "#4361EE", // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -709,7 +709,7 @@ function blocklyGlobalConfig() {
                     }
                 ],
                 output: "Array",
-                colour: "#4361EE", // 控制台积木：紫色
+                colour: "#4361EE", // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -891,7 +891,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 控制台积木：紫色
+                colour: "#4361EE", // 动作积木：蓝色
                 tooltip: "",
             });
         },

@@ -1,13 +1,13 @@
-# 配置文件功能说明
+# 配置持久化功能说明
 
 ## 概述
 
-在PetoiWebBlock中添加了配置文件功能，当点击快速连接但检测到没有可用串口时，系统会尝试使用配置文件中保存的IP地址进行连接。如果连接不成功，再打开WiFi配置对话框。
+在PetoiWebBlock中添加了配置持久化功能，当点击快速连接但检测到没有可用串口时，系统会尝试使用localStorage中保存的IP地址进行连接。如果连接不成功，再打开WiFi配置对话框。
 
 ## 功能特性
 
-### 1. 配置文件结构
-配置文件 `config.json` 包含以下信息：
+### 1. 配置数据结构
+localStorage中保存的配置包含以下信息：
 ```json
 {
   "lastKnownIP": "192.168.4.1",
@@ -34,35 +34,45 @@
 #### 新流程：
 1. 点击"Quick Connect"按钮
 2. 尝试连接串口
-3. 如果串口连接失败，尝试使用配置文件中的IP地址
-4. 如果配置的IP地址也连接失败，才显示WiFi配置对话框
+3. 如果串口连接失败，尝试使用localStorage中保存的IP地址
+4. 如果保存的IP地址也连接失败，才显示WiFi配置对话框
 
 ### 3. 自动保存功能
-- 当检测到新的IP地址时，自动保存到配置文件
+- 当检测到新的IP地址时，自动保存到localStorage
 - 维护连接历史记录
 - 更新最后连接时间
+- 页面刷新后自动恢复配置
 
 ## 技术实现
 
-### 1. 配置文件操作函数
+### 1. 配置操作函数
 
-#### 加载配置文件
+#### 加载配置
 ```javascript
 async function loadConfig() {
   try {
-    const response = await fetch('./config.json');
-    if (response.ok) {
-      const loadedConfig = await response.json();
-      config = { ...config, ...loadedConfig };
-      console.log('Configuration loaded:', config);
+    // 首先尝试从localStorage加载配置
+    const localStorageConfig = localStorage.getItem('petoiConfig');
+    if (localStorageConfig) {
+      try {
+        const parsedConfig = JSON.parse(localStorageConfig);
+        config = { ...config, ...parsedConfig };
+        console.log('Configuration loaded from localStorage:', config);
+        return; // 如果从localStorage成功加载，就不需要从文件加载了
+      } catch (parseError) {
+        console.warn('Failed to parse localStorage config:', parseError);
+      }
     }
+    
+    // 如果localStorage中没有配置或解析失败，使用默认配置
+    console.log('No localStorage config found, using default configuration');
   } catch (error) {
     console.warn('Failed to load config, using defaults:', error);
   }
 }
 ```
 
-#### 保存配置文件
+#### 保存配置
 ```javascript
 async function saveConfig() {
   try {
@@ -76,6 +86,14 @@ async function saveConfig() {
         config.connectionHistory.unshift(currentDeviceIP);
         config.connectionHistory = config.connectionHistory.slice(0, 10);
       }
+    }
+    
+    // 保存到localStorage，这样页面刷新后配置不会丢失
+    try {
+      localStorage.setItem('petoiConfig', JSON.stringify(config));
+      console.log('Configuration saved to localStorage:', config);
+    } catch (localStorageError) {
+      console.warn('Failed to save to localStorage:', localStorageError);
     }
     
     console.log('Configuration updated:', config);
@@ -133,12 +151,12 @@ async function quickConnect() {
     } catch (error) {
       console.log('Serial port connection failed, trying configured IP...');
       
-      // 串口连接失败，尝试使用配置文件中的IP地址
+      // 串口连接失败，尝试使用localStorage中保存的IP地址
       const connectedWithConfig = await tryConnectWithConfigIP();
       
       if (!connectedWithConfig) {
-        // 如果配置的IP地址也连接失败，显示WiFi配置对话框
-        console.log('Both serial and configured IP failed, showing WiFi config dialog');
+        // 如果保存的IP地址也连接失败，显示WiFi配置对话框
+        console.log('Both serial and saved IP failed, showing WiFi config dialog');
         showWifiConfigDialog();
       }
     }
@@ -152,19 +170,24 @@ async function quickConnect() {
 ## 使用场景
 
 ### 1. 首次使用
-- 用户首次使用时，配置文件不存在或为空
+- 用户首次使用时，localStorage中没有保存的配置
 - 系统会使用默认IP地址（192.168.4.1）
-- 连接成功后，新的IP地址会被保存到配置文件
+- 连接成功后，新的IP地址会自动保存到localStorage中
 
 ### 2. 日常使用
-- 用户再次使用时，系统会尝试使用上次成功连接的IP地址
+- 用户再次使用时，系统会自动从localStorage加载上次的配置
 - 如果设备IP地址没有变化，可以快速连接
 - 如果IP地址已变化，会回退到WiFi配置流程
 
 ### 3. 多设备环境
-- 配置文件会保存连接历史记录
+- localStorage会保存连接历史记录
 - 用户可以在多个设备之间切换
 - 系统会尝试使用最近成功连接的IP地址
+
+### 4. 隐私模式使用
+- 在浏览器隐私模式下，localStorage可能不可用
+- 系统会回退到内存存储，仅在当前会话有效
+- 页面刷新后需要重新配置
 
 ## 优势
 
@@ -173,12 +196,45 @@ async function quickConnect() {
 3. **智能回退**：在串口连接失败时提供备选方案
 4. **历史记录**：保存连接历史，便于多设备管理
 
+## 存储方案
+
+### 主要存储方式：localStorage
+系统使用浏览器的localStorage API作为主要的配置持久化方案：
+
+- **持久化存储**：配置数据保存在浏览器的localStorage中，页面刷新后不会丢失
+- **自动加载**：页面加载时自动从localStorage恢复上次的配置
+- **实时保存**：连接成功后自动更新并保存配置到localStorage
+- **键名**：使用`petoiConfig`作为localStorage的键名
+
+### 回退机制
+当localStorage不可用时（如隐私模式或存储空间不足），系统会：
+
+- **内存存储**：将配置保存在内存中，仅在当前会话有效
+- **默认配置**：使用预设的默认配置值
+- **错误处理**：记录警告日志但不影响功能使用
+
+### 配置数据结构
+```json
+{
+  "lastKnownIP": "192.168.4.1",
+  "lastConnectedTime": "2024-01-01T12:00:00.000Z",
+  "connectionHistory": ["192.168.1.100", "192.168.4.1"],
+  "autoConnect": true,
+  "connectionTimeout": 5000
+}
+```
+
+### 未来改进
+- **服务器同步**：添加服务器端配置同步功能，支持多设备配置共享
+- **配置界面**：提供可视化的配置管理界面
+- **备份恢复**：支持配置的导入导出功能
+
 ## 注意事项
 
-1. **浏览器安全限制**：由于浏览器安全限制，配置文件只能读取，无法直接写入
-2. **内存存储**：配置更新只保存在内存中，页面刷新后会丢失
-3. **服务器支持**：实际的文件保存需要服务器端支持
-4. **网络环境**：配置的IP地址可能因为网络环境变化而失效
+1. **浏览器兼容性**：localStorage在所有现代浏览器中都支持，但在隐私模式下可能不可用
+2. **存储限制**：localStorage有存储大小限制（通常5-10MB），但配置数据很小
+3. **网络环境**：配置的IP地址可能因为网络环境变化而失效
+4. **数据安全**：配置数据仅存储在本地浏览器中，不会上传到服务器
 
 ## 修复记录
 
@@ -186,16 +242,16 @@ async function quickConnect() {
 
 1. **串口选择失败处理**：
    - 修改了`openSerialPort`函数，当串口选择失败或连接失败时，会抛出异常而不是返回
-   - 确保在用户取消串口选择或选择的串口无法连接时，会尝试使用配置文件中的IP地址
+   - 确保在用户取消串口选择或选择的串口无法连接时，会尝试使用localStorage中保存的IP地址
 
 2. **配置保存逻辑修复**：
    - 修复了`tryConnectWithConfigIP`函数中的配置保存逻辑
    - 在成功建立连接后，正确更新config中的连接时间
-   - 确保IP地址变化时能正确保存到配置中
+   - 确保IP地址变化时能正确保存到localStorage中
 
 3. **异常处理改进**：
    - 改进了串口连接失败时的异常处理
-   - 确保所有连接失败的情况都能正确回退到配置文件IP尝试
+   - 确保所有连接失败的情况都能正确回退到localStorage中保存的IP地址尝试
 
 4. **localStorage持久化修复**（重要）：
    - 修改了`saveConfig`函数，将配置保存到localStorage中
@@ -256,7 +312,8 @@ async function quickConnect() {
 
 ## 未来改进
 
-1. **本地存储**：使用localStorage或IndexedDB保存配置
-2. **服务器同步**：添加服务器端配置同步功能
-3. **配置界面**：添加配置管理界面
-4. **连接测试**：添加连接质量测试功能 
+1. **服务器同步**：添加服务器端配置同步功能，支持多设备配置共享
+2. **配置界面**：提供可视化的配置管理界面
+3. **连接测试**：添加连接质量测试功能
+4. **配置备份**：支持配置的导入导出功能
+5. **高级存储**：考虑使用IndexedDB进行更复杂的配置数据管理 

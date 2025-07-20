@@ -4,7 +4,10 @@
 
 // 代码生成:发送步态动作命令
 
-const COMMAND_TIMEOUT_MAX = 30 * 60 * 1000;
+const COMMAND_TIMEOUT_MAX = 60 * 1000; // 60 seconds for most commands
+const LONG_COMMAND_TIMEOUT = 5 * 60 * 1000; // 5 minutes for complex movements
+const ACROBATIC_MOVES_TIMEOUT = 30 * 1000; // 30 seconds for acrobatic moves
+const JOINT_QUERY_TIMEOUT = 10 * 1000; // 10 seconds for joint state queries
 
 Blockly.JavaScript.forBlock["gait"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
@@ -34,7 +37,7 @@ Blockly.JavaScript.forBlock["acrobatic_moves"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", ${ACROBATIC_MOVES_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -78,7 +81,7 @@ Blockly.JavaScript.forBlock["send_custom_command"] = function (block) {
     );
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest(${command}, ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
+    let code = `(async () => { const result = await webRequest(${command}, ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -129,7 +132,7 @@ Blockly.JavaScript.forBlock["play_melody"] = function (block) {
     
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.ceil(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${encodeCmd}", ${COMMAND_TIMEOUT_MAX}, true, "${displayCmd}"); if (result !== null) console.log(result); })();\n`;
+    let code = `(async () => { const result = await webRequest("${encodeCmd}", ${LONG_COMMAND_TIMEOUT}, true, "${displayCmd}"); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -304,7 +307,7 @@ javascript.javascriptGenerator.forBlock["arm_action"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
-    let code = `(async () => { const result = await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
     if (delayMs > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
     }
@@ -328,7 +331,7 @@ javascript.javascriptGenerator.forBlock["action_skill_file"] = function (
     const token = skillContent.token;
     const list = skillContent.data.flat();
     const cmd = encodeCommand(token, list);
-    let code = `(async () => { const result = await webRequest("${cmd}", ${COMMAND_TIMEOUT_MAX}, true); if (result !== null) console.log(result); })();\n`;
+    let code = `(async () => { const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result); })();\n`;
     if (delay > 0) {
         code += `await new Promise(resolve => setTimeout(resolve, ${delay}));\n`;
     }
@@ -639,7 +642,7 @@ async function encodeMoveCommand(token, params) {
         }
         const hasRelative = jointArgs.some((item) => item.length == 3);
         if (hasRelative) {
-            const rawResult = await webRequest("j", COMMAND_TIMEOUT_MAX, true);
+            const rawResult = await webRequest("j", JOINT_QUERY_TIMEOUT, true); // 10 seconds for joint query
             const result = parseAllJointsResult(rawResult);
             joints = result;
         }

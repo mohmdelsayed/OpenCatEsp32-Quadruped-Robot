@@ -217,10 +217,7 @@ body {
     /* 使按钮靠右对齐 */
 }
 
-.serial-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-}
+
 
 .wifi-dialog {
     position: fixed;
@@ -575,12 +572,12 @@ body {
     /* 连接后确保有足够高度 */
 }
 
-/* 串口按钮样式保留 */
+/* 串口按钮样式 */
 .serial-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 15px;
+    padding: 6px 12px;
     background: #007bff;
     color: #fff;
     border: none;
@@ -588,7 +585,7 @@ body {
     margin: 2px;
     font-size: 14px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: background-color 0.2s;
     font-family: Arial, sans-serif;
     white-space: normal;
     /* 允许文本自然换行 */
@@ -772,17 +769,7 @@ body {
     /* 连接后确保有足够高度 */
 }
 
-/* 串口按钮样式保留 */
-.serial-button {
-    padding: 6px 12px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s;
-}
+
 
 .serial-button:hover {
     background-color: #0056b3;
