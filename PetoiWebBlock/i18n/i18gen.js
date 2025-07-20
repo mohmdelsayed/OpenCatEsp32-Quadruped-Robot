@@ -6,7 +6,7 @@ const langs = ['zh', 'en', 'ja'];
 function generateTSV() {
     
     // 1. 读取 translations.js
-    const filePath = path.join(__dirname, 'i18n.js');
+    const filePath = path.join(__dirname, '..', 'lang', 'translations.js');
     const content = fs.readFileSync(filePath, 'utf8');
 
     // 2. 提取 TRANSLATIONS 对象
@@ -56,22 +56,30 @@ function generateJS() {
     // 2. 解析TSV内容
     const lines = tsvContent.split('\n').filter(line => line.trim());
     const headers = lines[0].split('\t');
-    const translations = {
-        zh: {},
-        en: {}
-    };
+    
+    // 动态初始化translations对象，包含所有支持的语言
+    const translations = {};
+    langs.forEach(lang => {
+        translations[lang] = {};
+    });
 
     // 3. 处理每一行数据
     for (let i = 1; i < lines.length; i++) {
-        const [key, zh, en] = lines[i].split('\t');
-        if (key && (zh || en)) {
-            translations.zh[key] = zh || '';
-            translations.en[key] = en || '';
+        const values = lines[i].split('\t');
+        const key = values[0];
+        
+        if (key) {
+            // 为每个语言分配对应的值
+            for (let j = 0; j < langs.length; j++) {
+                const lang = langs[j];
+                const value = values[j + 1] || ''; // j+1 因为第一列是key
+                translations[lang][key] = value;
+            }
         }
     }
 
     // 4. 读取原始的translations.js文件
-    const jsPath = path.join(__dirname, 'lang', 'i18n.js');
+    const jsPath = path.join(__dirname, '..', 'lang', 'translations.js');
     const jsContent = fs.readFileSync(jsPath, 'utf8');
 
     // 5. 生成新的translations.js内容

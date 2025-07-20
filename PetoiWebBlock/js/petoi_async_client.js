@@ -74,7 +74,11 @@ class PetoiAsyncClient
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = null;
-            console.log(getText('heartbeatStopped'));
+            
+            // 只在调试模式下显示心跳停止信息
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log(getText('heartbeatStopped'));
+            }
         }
         if (this.heartbeatTimeout) {
             clearTimeout(this.heartbeatTimeout);
@@ -180,7 +184,10 @@ class PetoiAsyncClient
                 // 设置连接超时
                 const connectionTimeout = setTimeout(() => {
                     if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
-                        console.log('Connection timeout');
+                        // 只在调试模式下显示连接超时信息
+                        if (typeof showDebug !== 'undefined' && showDebug) {
+                            console.log('Connection timeout');
+                        }
                         this.ws.close();
                         reject(new Error('Connection timeout'));
                     }
@@ -191,7 +198,11 @@ class PetoiAsyncClient
                     this.connected = true;
                     this.reconnectAttempts = 0;
                     this.lastActivityTime = Date.now();
-                    console.log(getText('websocketConnected'));
+                    
+                    // 只在调试模式下显示连接成功信息
+                    if (typeof showDebug !== 'undefined' && showDebug) {
+                        console.log(getText('websocketConnected'));
+                    }
                     
                     // 启动心跳和健康检查
                     this.startHeartbeat();
@@ -206,7 +217,10 @@ class PetoiAsyncClient
                     this.stopHeartbeat();
                     this.stopHealthCheck();
                     
-                    console.log(getText('websocketClosed'), event.code, event.reason);
+                    // 只在调试模式下显示连接关闭信息
+                    if (typeof showDebug !== 'undefined' && showDebug) {
+                        console.log(getText('websocketClosed'), event.code, event.reason);
+                    }
                     
                     // 如果不是正常关闭，尝试重连
                     if (event.code !== 1000 && this.autoReconnect) {
@@ -227,7 +241,10 @@ class PetoiAsyncClient
                 
             } catch (error) {
                 clearTimeout(connectionTimeout);
-                console.error('Failed to create WebSocket connection:', error);
+                // 只在调试模式下显示WebSocket创建失败错误
+                if (typeof showDebug !== 'undefined' && showDebug) {
+                    console.error('Failed to create WebSocket connection:', error);
+                }
                 reject(error);
             }
         });
@@ -276,7 +293,11 @@ class PetoiAsyncClient
         if (this.ws && this.connected && this.ws.readyState === WebSocket.OPEN) {
             const now = Date.now();
             const timeSinceLastHeartbeat = now - this.lastHeartbeatTime;
-            console.log(getText('heartbeatSent').replace('{time}', timeSinceLastHeartbeat));
+            
+            // 只在调试模式下显示心跳信息
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log(getText('heartbeatSent').replace('{time}', timeSinceLastHeartbeat));
+            }
             
             const heartbeatMessage = {
                 type: 'heartbeat',
@@ -288,7 +309,10 @@ class PetoiAsyncClient
                 this.lastHeartbeatTime = now;
                 this.lastActivityTime = now;
             } catch (error) {
-                console.error('Failed to send heartbeat:', error);
+                // 只在调试模式下显示心跳发送失败错误
+                if (typeof showDebug !== 'undefined' && showDebug) {
+                    console.error('Failed to send heartbeat:', error);
+                }
                 this.handleConnectionFailure('Heartbeat send failed');
             }
         }
@@ -300,18 +324,27 @@ class PetoiAsyncClient
     handleMessage(data)
     {
         try {
-            console.log('handleMessage', data);
+            // 只在调试模式下显示消息处理信息
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log('handleMessage', data);
+            }
             
             // 检查data是否为null或undefined
             if (!data) {
-                console.warn('Received null or undefined data in handleMessage');
+                if (typeof showDebug !== 'undefined' && showDebug) {
+                    console.warn('Received null or undefined data in handleMessage');
+                }
                 return;
             }
             
             // 清理数据中的特殊字符
             const cleanData = data.replace(/[\r\n\t\f\v]/g, ' ').trim();
             const message = JSON.parse(cleanData);
-            console.log('message type', message.type);
+            
+            // 只在调试模式下显示消息类型
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.log('message type', message.type);
+            }
             
             // 更新最后活动时间
             this.lastActivityTime = Date.now();
@@ -320,7 +353,12 @@ class PetoiAsyncClient
             if (message.type === 'heartbeat') {
                 const now = Date.now();
                 const latency = now - this.lastHeartbeatTime;
-                console.log(getText('heartbeatResponse').replace('{latency}', latency));
+                
+                // 只在调试模式下显示心跳信息
+                if (typeof showDebug !== 'undefined' && showDebug) {
+                    console.log(getText('heartbeatResponse').replace('{latency}', latency));
+                }
+                
                 if (this.heartbeatTimeout) {
                     clearTimeout(this.heartbeatTimeout);
                     this.heartbeatTimeout = null;
@@ -330,7 +368,10 @@ class PetoiAsyncClient
 
             // 处理连接成功响应
             if (message.type === 'connected') {
-                console.log('Connection confirmed by server');
+                // 只在调试模式下显示连接确认信息
+                if (typeof showDebug !== 'undefined' && showDebug) {
+                    console.log(getText('connectionConfirmed'));
+                }
                 return;
             }
 
@@ -371,8 +412,11 @@ class PetoiAsyncClient
                 this.eventTarget.dispatchEvent(new CustomEvent(message.event, message));
             }
         } catch (error) {
-            console.error(getText('messageProcessingError'), error);
-            console.error(getText('rawData'), data);
+            // 只在调试模式下显示消息处理错误
+            if (typeof showDebug !== 'undefined' && showDebug) {
+                console.error(getText('messageProcessingError'), error);
+                console.error(getText('rawData'), data);
+            }
         }
     }
 
@@ -422,7 +466,10 @@ class PetoiAsyncClient
         if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
             // 尝试重新连接
             if (this.autoReconnect) {
-                console.log('Connection lost, attempting reconnect before sending command...');
+                // 只在调试模式下显示重连信息
+                if (typeof showDebug !== 'undefined' && showDebug) {
+                    console.log('Connection lost, attempting reconnect before sending command...');
+                }
                 try {
                     await this.connect();
                 } catch (error) {

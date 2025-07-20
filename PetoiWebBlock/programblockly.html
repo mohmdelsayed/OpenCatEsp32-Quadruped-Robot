@@ -2508,7 +2508,7 @@ ${code}
     {
       if (!writer)
       {
-        console.log('No serial writer available, showing WiFi config dialog');
+        console.log(getText('noSerialWriterAvailable'));
         showWifiConfigDialog();
         return;
       }
@@ -2518,7 +2518,7 @@ ${code}
         // 发送'w'指令获取IP地址
         const command = 'w\n';
         await writer.write(new TextEncoder().encode(command));
-        console.log('Sent WiFi command to get IP address');
+        console.log(getText('wifiCommandSent'));
 
         // 等待一段时间让设备响应
         setTimeout(() =>
@@ -2527,7 +2527,7 @@ ${code}
           if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
           {
             // 如果没有获取到IP地址或获取到的是默认AP模式IP，显示WiFi配置界面
-            console.log('No valid IP address received, showing WiFi config dialog');
+            console.log(getText('noValidIPReceived'));
             showWifiConfigDialog();
           }
         }, 3000); // 等待3秒
@@ -2702,11 +2702,11 @@ ${code}
         if (writer)
         {
           await writer.write(new TextEncoder().encode(command));
-          console.log('WiFi configuration command sent successfully');
+          console.log(getText('wifiConfigCommandSent'));
         }
         else
         {
-          console.log('No serial writer available, but WiFi settings saved');
+          console.log(getText('noSerialWriterButSettingsSaved'));
         }
 
         closeWifiDialog();
@@ -2717,7 +2717,7 @@ ${code}
         // 等待一段时间后尝试连接
         setTimeout(async () =>
         {
-          console.log('Attempting to connect after WiFi configuration...');
+          console.log(getText('attemptingConnectAfterWifiConfig'));
           // 尝试使用新的WiFi配置连接
           await tryConnectWithConfigIP();
         }, 5000); // 等待5秒让设备重启并连接
@@ -2844,7 +2844,7 @@ ${code}
           error.message.includes('device disconnected') ||
           error.message.includes('connection lost'))
         {
-          console.log('Hardware disconnected, cleaning up serial connection...');
+          console.log(getText('hardwareDisconnected'));
 
           // 重置串口相关变量
           reader = null;
@@ -2933,7 +2933,7 @@ ${code}
             repositionUndoRedoButtons();
           }, 100);
 
-          console.log('Serial connection cleanup completed due to hardware disconnect');
+          console.log(getText('serialConnectionCleanupCompleted'));
         }
       }
     }
