@@ -1190,6 +1190,14 @@ ${code}
     if (e.message === "程序执行被用户停止") {
       // 只在catch块中打印一次停止消息，避免重复
       await asyncLog(getText("programExecutionStopped"));
+      // 程序被用户停止时，立即发送休息指令'd'（在关闭连接之前）
+      try {
+        await asyncLog(getText("programEndingRestCommand"));
+        await webRequest("d", 5000, true, null, true); // 绕过停止标志检查
+        console.log("Rest command sent successfully");
+      } catch (restError) {
+        console.error(getText("restCommandFailed") + restError.message);
+      }
     } else {
       console.error(getText("restCommandFailed") + e.message);
     }

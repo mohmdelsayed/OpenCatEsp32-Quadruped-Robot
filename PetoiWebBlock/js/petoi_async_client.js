@@ -504,9 +504,20 @@ class PetoiAsyncClient
                 reject(new Error(getText('commandTimeout') + ' ' + taskId + ' ' + commands.join(' ') + ' (timeout: ' + actualTimeout + 'ms)'));
             }, actualTimeout);
 
+            // 添加停止标志检查定时器（每100ms检查一次）
+            const stopCheckInterval = setInterval(() => {
+                if (typeof stopExecution !== 'undefined' && stopExecution) {
+                    clearTimeout(timeoutId);
+                    clearInterval(stopCheckInterval);
+                    this.pendingTasks.delete(taskId);
+                    reject(new Error("程序执行被用户停止"));
+                }
+            }, 100);
+
             this.pendingTasks.set(taskId, {
                 resolve: (result) => {
                     clearTimeout(timeoutId);
+                    clearInterval(stopCheckInterval);
                     if (Array.isArray(command)) {
                         resolve(result.map(item => parseInt(item) || 0));
                     } else {
@@ -515,6 +526,7 @@ class PetoiAsyncClient
                 },
                 reject: (error) => {
                     clearTimeout(timeoutId);
+                    clearInterval(stopCheckInterval);
                     reject(error);
                 }
             });
@@ -530,6 +542,7 @@ class PetoiAsyncClient
                 this.lastActivityTime = Date.now();
             } catch (error) {
                 clearTimeout(timeoutId);
+                clearInterval(stopCheckInterval);
                 this.pendingTasks.delete(taskId);
                 this.handleConnectionFailure('Send command failed');
                 reject(error);

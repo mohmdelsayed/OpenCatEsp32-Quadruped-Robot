@@ -23,7 +23,19 @@ Blockly.JavaScript.forBlock["gait"] = function (block) {
     const delayMs = Math.round(delay * 1000);
     let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", 20000, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -35,7 +47,19 @@ Blockly.JavaScript.forBlock["posture"] = function (block) {
     const delayMs = Math.round(delay * 1000);
     let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", 10000, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -47,7 +71,19 @@ Blockly.JavaScript.forBlock["acrobatic_moves"] = function (block) {
     const delayMs = Math.round(delay * 1000);
     let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", ${ACROBATIC_MOVES_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -59,7 +95,7 @@ Blockly.JavaScript.forBlock["delay_ms"] = function (block) {
     let code = `checkStopExecution();\nconsole.log(getText("delayMessage").replace("{delay}", ${delay}));\n`;
     if (delayMs > 0) {
         // 对于长时间延时，分段检查停止标志
-        if (delayMs > 1000) {
+        if (delayMs > 100) {
             code += `await (async () => {
   const checkInterval = 100; // 每100ms检查一次
   const totalChecks = Math.ceil(${delayMs} / checkInterval);
@@ -103,7 +139,19 @@ Blockly.JavaScript.forBlock["send_custom_command"] = function (block) {
     const delayMs = Math.round(delay * 1000);
     let code = wrapAsyncOperation(`const result = await webRequest(${command}, ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -154,7 +202,19 @@ Blockly.JavaScript.forBlock["play_melody"] = function (block) {
     const delayMs = Math.ceil(delay * 1000);
     let code = wrapAsyncOperation(`const result = await webRequest("${encodeCmd}", ${LONG_COMMAND_TIMEOUT}, true, "${displayCmd}"); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -179,7 +239,19 @@ await (async function() {
 `
     const delayMs = Math.ceil(delay * 1000);
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -204,7 +276,19 @@ await (async function() {
 `
     const delayMs = Math.ceil(delay * 1000);
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -236,7 +320,19 @@ javascript.javascriptGenerator.forBlock["set_joints_angle_sim_raw"] = function (
         const command = encodeCommand(token, angleParams);
         let code = wrapAsyncOperation(`const result = await webRequest("${command}", 30000, true); if (result !== null) console.log(result);`) + '\n';
         if (delayMs > 0) {
-            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+            // 对于长时间延时，分段检查停止标志
+            if (delayMs > 100) {
+                code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+            } else {
+                code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+            }
         }
         return code;
     }
@@ -268,7 +364,19 @@ await (async function() {
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.ceil(delay * 1000);
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -333,7 +441,19 @@ javascript.javascriptGenerator.forBlock["arm_action"] = function (block) {
     const delayMs = Math.round(delay * 1000);
     let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delayMs > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delayMs}));\n`;
+        }
     }
     return code;
 };
@@ -357,7 +477,19 @@ javascript.javascriptGenerator.forBlock["action_skill_file"] = function (
     const cmd = encodeCommand(token, list);
     let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", ${LONG_COMMAND_TIMEOUT}, true); if (result !== null) console.log(result);`) + '\n';
     if (delay > 0) {
-        code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delay}));\n`;
+        // 对于长时间延时，分段检查停止标志
+        if (delay > 100) {
+            code += `await (async () => {
+  const checkInterval = 100; // 每100ms检查一次
+  const totalChecks = Math.ceil(${delay} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delay} - i * checkInterval)));
+  }
+})();\n`;
+        } else {
+            code += `checkStopExecution();\nawait new Promise(resolve => setTimeout(resolve, ${delay}));\n`;
+        }
     }
     return code;
 };

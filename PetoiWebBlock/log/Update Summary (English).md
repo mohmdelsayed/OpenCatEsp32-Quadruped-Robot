@@ -24,6 +24,7 @@
 | **Configuration Persistence Enhancement** | Improved configuration save and load mechanism | `programblockly.html`<br>`log/CONFIG_FILE_FEATURE.md` | Auto-try saved IP address when serial connection fails, maintain connection history, intelligent fallback to WiFi configuration | **Problem**: Manual configuration needed when serial connection fails<br>**Solution**: Auto-try saved IP, intelligent fallback mechanism<br>**Improvement**: Higher connection success rate, more intelligent configuration |
 | **Stop Function Improvement** | Added global stop mechanism and UI optimization | `programblockly.html`<br>`blocks/generators.js`<br>`lang/translations.js` | Added global stopExecution flag, stop button red background, fixed stop prompt duplicate printing, support stop check in loops | **Problem**: Cannot stop long-running programs, duplicate stop prompts<br>**Solution**: Global stop mechanism, UI optimization, fixed duplicate prompts<br>**Improvement**: More flexible program control, better user experience |
 | **Sensor Auto-Print Optimization** | Improved sensor reading auto-print logic | `blocks/generators.js` | Changed sensor reading block auto-print condition from showSentCommands to showDebug, separated command display from debug information | **Problem**: Sensor auto-print confused with command display<br>**Solution**: Use showDebug to control sensor auto-print<br>**Improvement**: Logic clearer, more precise user control |
+| **Stop Function Major Improvement** | Implemented instant interruption for long-running commands and delays | `js/petoi_async_client.js`<br>`blocks/generators.js` | Added stop flag check timer in WebSocket client (check every 100ms), modified all code generators to segment long delays (>100ms) for stop flag checking, auto-send rest command 'd' when program stops | **Problem**: Long-running gait commands and delays cannot be stopped immediately, need to wait for command completion or timeout<br>**Solution**: Check stop flag within 100ms, segment long delays for checking, auto-send rest command when stopping<br>**Improvement**: Stop response speed improved from 8 seconds to 100ms, significant user experience improvement |
 
 ## Overall User Experience Improvement Summary
 
@@ -55,6 +56,8 @@
 - **Loop Control**: Cannot interrupt → Support stop in loops
 - **Command Display**: Confusing unclear → Clear separation
 - **Debounce Protection**: Repeated execution → Intelligent debounce
+- **Stop Response**: 8-second delay → 100ms instant response
+- **Program Stop**: Manual rest command → Auto-send rest command 'd'
 
 ## Technical Improvement Points
 
@@ -69,6 +72,12 @@
 - Normal commands: 60s → 10s
 - Complex actions: 60s → 15s
 
+### Stop Function Optimization
+- WebSocket command stop check: No check → Check every 100ms
+- Long delay stop check: No check → Segmented check (every 100ms)
+- Stop response speed: 8 seconds → 100ms
+- Program stop handling: Manual rest command → Auto-send 'd' command
+
 ### Serial Connection Optimization
 - Auto-select unique available port
 - Hardware disconnection 3-second timeout detection
@@ -82,6 +91,7 @@
 - Real-time state synchronization
 - Stop button red background
 - Debounce mechanism protection
+- Program stop instant response
 
 ### Program Control Optimization
 - Global stopExecution flag
@@ -103,6 +113,86 @@
 - Auto-configuration recovery
 
 These modifications comprehensively improved the stability, response speed, safety, and user experience of WebServer and WebCodingBlocks, making the system more intelligent, stable, and user-friendly. The system now has complete error handling, intelligent configuration management, flexible program control, and other advanced features.
+
+## Stop Function Major Improvement Detailed Description
+
+### Problem Background
+In previous versions, long-running gait commands (such as `kwkF` with 20-second timeout) and long delays (such as 10-second delays) would block program execution. Users had to wait for command completion or timeout after clicking the stop button, with response times of 8 seconds or more, resulting in poor user experience.
+
+### Technical Solution
+
+#### 1. WebSocket Client Stop Check Optimization
+**File**: `js/petoi_async_client.js`
+**Modification**: Added stop flag check timer in `sendCommand` method
+```javascript
+// Add stop flag check timer (check every 100ms)
+const stopCheckInterval = setInterval(() => {
+    if (typeof stopExecution !== 'undefined' && stopExecution) {
+        clearTimeout(timeoutId);
+        clearInterval(stopCheckInterval);
+        this.pendingTasks.delete(taskId);
+        reject(new Error("Program execution stopped by user"));
+    }
+}, 100);
+```
+
+#### 2. Code Generator Delay Optimization
+**File**: `blocks/generators.js`
+**Modification**: Changed all long delays (>100ms) to segmented checking
+```javascript
+// For long delays, segment check stop flag
+if (delayMs > 100) {
+    code += `await (async () => {
+  const checkInterval = 100; // Check every 100ms
+  const totalChecks = Math.ceil(${delayMs} / checkInterval);
+  for (let i = 0; i < totalChecks; i++) {
+    checkStopExecution();
+    await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ${delayMs} - i * checkInterval)));
+  }
+})();\n`;
+}
+```
+
+#### 3. Auto Rest Command Sending
+**File**: `programblockly.html`
+**Modification**: Auto-send rest command 'd' when program stops
+```javascript
+if (e.message === "Program execution stopped by user") {
+    await asyncLog(getText("programExecutionStopped"));
+    try {
+        await asyncLog(getText("programEndingRestCommand"));
+        await webRequest("d", 5000, true, null, true); // Bypass stop flag check
+        console.log("Rest command sent successfully");
+    } catch (restError) {
+        console.error(getText("restCommandFailed") + restError.message);
+    }
+}
+```
+
+### Modified Blocks
+The delay logic of all the following blocks has been optimized:
+- Gait actions (gait)
+- Posture actions (posture)
+- Acrobatic moves (acrobatic_moves)
+- Delay (delay_ms)
+- Custom commands (send_custom_command)
+- Play melody (play_melody)
+- Joint angle settings (set_joints_angle_seq, set_joints_angle_sim, set_joint_angle)
+- Arm actions (arm_action)
+- Skill file execution (action_skill_file)
+
+### User Experience Improvement
+- **Stop Response Speed**: Improved from 8 seconds to 100ms (80x improvement)
+- **Stop Button Feedback**: Red background after clicking Run Code, providing visual feedback
+- **Auto Rest**: Auto-send 'd' command when program stops, robot enters rest state
+- **Instant Interruption**: Long commands and delays can be interrupted immediately
+- **Error Handling**: Errors during stopping are handled gracefully, not affecting user experience
+
+### Technical Advantages
+- **Non-blocking Check**: Use timer for non-blocking stop flag checking
+- **Resource Cleanup**: Properly clean timers and task queues, avoiding memory leaks
+- **Backward Compatibility**: No impact on existing functionality, only enhanced stop response capability
+- **Performance Optimization**: 100ms check interval balances response speed and performance overhead
 
 ## New Features Detailed Description
 

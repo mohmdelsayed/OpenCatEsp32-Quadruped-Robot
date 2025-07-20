@@ -1090,7 +1090,7 @@ function blocklyGlobalConfig() {
             var options = [
                 [getText("acrobaticHandstand"), "khds"],
                 [getText("acrobaticBoxing"), "kbx"],
-                [getText("acrobaticBackflip"), "kflipB"],
+                [getText("acrobaticBackflip"), "kflipD"],
                 [getText("acrobaticFrontflip"), "kflipF"],
                 [getText("acrobaticJump"), "kjmp"],
             ];

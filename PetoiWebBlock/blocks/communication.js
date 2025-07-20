@@ -93,13 +93,13 @@ async function closeConnection() {
 // 全局异步客户端类定义
 // PetoiAsyncClient 类已移动到 petoi_async_client.js 文件中
 
-function webRequest(command, timeout = 30000, needResponse = true, displayCommand = null) {
+function webRequest(command, timeout = 30000, needResponse = true, displayCommand = null, bypassStopCheck = false) {
   return new Promise(async (resolve, reject) =>
     {
       try
       {
-        // 检查停止标志
-        if (typeof stopExecution !== 'undefined' && stopExecution) {
+        // 检查停止标志（除非明确绕过）
+        if (!bypassStopCheck && typeof stopExecution !== 'undefined' && stopExecution) {
           reject(new Error("程序执行被用户停止"));
           return;
         }
