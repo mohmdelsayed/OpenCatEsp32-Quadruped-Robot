@@ -90,7 +90,7 @@ String uniqueName = "";
 #define BT_SSP  // toggle Bluetooth Secure Simple Pairing (BT_SSP)
 #define WEB_SERVER // toggle web server
 #ifndef VT
-#define GYRO_PIN  // toggle the Inertia Measurement Unit (IMU), i.e. the gyroscope
+// #define GYRO_PIN  // toggle the Inertia Measurement Unit (IMU), i.e. the gyroscope
 #endif
 #define SERVO_FREQ 240
 

@@ -1017,6 +1017,7 @@
 
     // 防抖变量
     let lastRunCodeTime = 0;
+    let programStartTime = 0; // 程序启动时间
     let isProgramRunning = false;
     let stopExecution = false; // 全局停止标志
 
@@ -1043,7 +1044,7 @@
     {
       const now = Date.now();
 
-      // 防抖检查：如果距离上次点击小于1秒，则不执行
+      // 防抖检查：如果距离上次程序结束小于1秒，则不执行
       if (now - lastRunCodeTime < 1000)
       {
         if (typeof showDebug !== 'undefined' && showDebug)
@@ -1104,6 +1105,18 @@
     {
       if (isProgramRunning)
       {
+        const now = Date.now();
+
+        // 防抖检查：如果距离程序启动小于1秒，则不执行停止
+        if (now - programStartTime < 1000)
+        {
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log(getText("stopDebounceTimeInterval") || "Stop button debounce: Please wait at least 1 second after program start");
+          }
+          return;
+        }
+
         stopExecution = true;
         console.log(getText("stopRequested"));
       }
@@ -1112,7 +1125,7 @@
     function executeRunCode()
     {
       const now = Date.now();
-      lastRunCodeTime = now;
+      programStartTime = now; // 记录程序启动时间
       isProgramRunning = true;
       stopExecution = false; // 重置停止标志
 
@@ -1216,6 +1229,9 @@ ${code}
   // 程序执行完成后，重置运行状态
   isProgramRunning = false;
   stopExecution = false;
+  
+  // 记录程序结束时间，用于防抖
+  lastRunCodeTime = Date.now();
   
   // 隐藏停止按钮，显示运行按钮，并重置停止按钮样式
   const stopBtn = document.getElementById('stopCodeBtn');
