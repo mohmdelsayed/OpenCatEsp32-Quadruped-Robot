@@ -782,26 +782,36 @@ body {
 
 /* ESP32串口选择对话框样式 */
 .esp32-port-selector {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 1000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    /* 确保没有其他样式影响 */
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
 }
 
 .esp32-port-dialog {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    min-width: 300px;
-    max-width: 500px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    animation: dialogFadeIn 0.3s ease-out;
+    background: white !important;
+    padding: 20px !important;
+    border-radius: 8px !important;
+    min-width: 300px !important;
+    max-width: 500px !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    animation: dialogFadeIn 0.3s ease-out !important;
+    margin: 20px !important;
+    /* 确保没有其他样式影响 */
+    position: relative !important;
+    box-sizing: border-box !important;
 }
 
 @keyframes dialogFadeIn {
@@ -872,4 +882,151 @@ body {
 
 .esp32-port-buttons button.confirm:hover {
     background: #45a049;
+}
+
+/* 响应式设计 - 移动设备优化 */
+@media screen and (max-width: 768px) {
+    .esp32-port-dialog {
+        min-width: 280px;
+        max-width: 90vw;
+        margin: 10px;
+        padding: 15px;
+    }
+
+    .esp32-port-option {
+        padding: 10px;
+        margin: 6px 0;
+    }
+
+    .esp32-port-option strong {
+        font-size: 13px;
+    }
+
+    .esp32-port-buttons button {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .esp32-port-dialog {
+        min-width: 250px;
+        max-width: 95vw;
+        margin: 5px;
+        padding: 12px;
+    }
+
+    .esp32-port-dialog h3 {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+
+    .esp32-port-option {
+        padding: 8px;
+        margin: 4px 0;
+    }
+
+    .esp32-port-option strong {
+        font-size: 12px;
+    }
+}
+
+/* 警告窗口样式 */
+.alert-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 2000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.alert-dialog {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    min-width: 300px;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: dialogFadeIn 0.15s ease-out;
+    margin: 20px;
+    text-align: center;
+}
+
+.alert-dialog h3 {
+    margin: 0 0 15px 0;
+    color: #d32f2f;
+    font-size: 18px;
+}
+
+.alert-dialog p {
+    margin: 0 0 20px 0;
+    color: #333;
+    line-height: 1.5;
+}
+
+.alert-dialog button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    background: #2196f3;
+    color: white;
+    transition: background 0.2s ease;
+}
+
+.alert-dialog button:hover {
+    background: #1976d2;
+}
+
+/* 响应式设计 - 移动设备优化 */
+@media screen and (max-width: 768px) {
+    .alert-dialog {
+        min-width: 280px;
+        max-width: 90vw;
+        margin: 10px;
+        padding: 20px;
+    }
+
+    .alert-dialog h3 {
+        font-size: 16px;
+    }
+
+    .alert-dialog p {
+        font-size: 14px;
+    }
+
+    .alert-dialog button {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .alert-dialog {
+        min-width: 250px;
+        max-width: 95vw;
+        margin: 5px;
+        padding: 15px;
+    }
+
+    .alert-dialog h3 {
+        font-size: 15px;
+        margin-bottom: 12px;
+    }
+
+    .alert-dialog p {
+        font-size: 13px;
+        margin-bottom: 15px;
+    }
+
+    .alert-dialog button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
 }

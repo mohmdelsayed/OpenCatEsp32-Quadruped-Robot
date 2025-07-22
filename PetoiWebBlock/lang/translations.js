@@ -93,6 +93,14 @@ const TRANSLATIONS = {
     "selectESP32Port": "选择ESP32串口设备",
     "selectSerialPort": "选择串口设备",
     "userCancelledSelection": "用户取消选择",
+    "serialValidationFailed": "连接失败：未检测到Petoi设备。\n请确保连接的是运行标准固件的Bittle、Nybble或其他Petoi机器人。",
+    "serialValidationSuccess": "串口验证成功 - 检测到Petoi设备",
+    "serialValidationTimeout": "串口验证超时 - 未收到回复",
+    "serialValidationError": "串口验证错误",
+    "connectionFailed": "连接失败",
+    "error": "错误",
+    "ok": "确定",
+
 
     // 命令消息
     "sendingCommand": "发送命令: ",
@@ -511,6 +519,14 @@ const TRANSLATIONS = {
       "selectESP32Port": "Select ESP32 Serial Port",
       "selectSerialPort": "Select Serial Port",
       "userCancelledSelection": "User cancelled selection",
+      "serialValidationFailed": "Connection failed: Petoi device not detected. \nPlease ensure you are connecting to a Bittle, Nybble, \nor other Petoi robot running the standard firmware.",
+      "serialValidationSuccess": "Serial validation successful - Petoi device detected",
+      "serialValidationTimeout": "Serial validation timeout - no response received",
+      "serialValidationError": "Serial validation error",
+      "connectionFailed": "Connection Failed",
+      "error": "Error",
+      "ok": "OK",
+
 
     // Command messages
     "sendingCommand": "Sending command: ",
@@ -935,6 +951,14 @@ const TRANSLATIONS = {
       "selectESP32Port": "ESP32シリアルポートを選択",
       "selectSerialPort": "シリアルポートを選択",
       "userCancelledSelection": "ユーザーが選択をキャンセルしました",
+      "serialValidationFailed": "接続失敗：Petoiデバイスが検出されませんでした。\n標準ファームウェアを実行しているBittle、Nybble、またはその他のPetoiロボットに接続していることを確認してください。",
+      "serialValidationSuccess": "シリアル検証成功 - Petoiデバイスが検出されました",
+      "serialValidationTimeout": "シリアル検証タイムアウト - 応答が受信されませんでした",
+      "serialValidationError": "シリアル検証エラー",
+      "connectionFailed": "接続失敗",
+      "error": "エラー",
+      "ok": "OK",
+
 
     // コマンドメッセージ
     "sendingCommand": "コマンド送信中: ",
@@ -1302,4 +1326,10 @@ function updateUITranslations()
       }
     }
   });
+
+  // 特殊处理快速连接按钮 - 调用HTML文件中的处理函数
+  if (typeof window.handleQuickConnectButtonOnLanguageChange === 'function')
+  {
+    window.handleQuickConnectButtonOnLanguageChange();
+  }
 } 

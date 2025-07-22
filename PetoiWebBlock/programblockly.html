@@ -235,16 +235,10 @@
         }
 
         // 确保按钮显示正确的IP地址
-        const quickConnectBtn = document.getElementById('quickConnectBtn');
-        if (quickConnectBtn && quickConnectBtn.textContent !== currentDeviceIP)
+        updateQuickConnectButtonState(currentDeviceIP);
+        if (typeof showDebug !== 'undefined' && showDebug)
         {
-          quickConnectBtn.textContent = currentDeviceIP;
-          quickConnectBtn.style.backgroundColor = '#4CAF50';
-          quickConnectBtn.setAttribute('data-connected', 'true');
-          if (typeof showDebug !== 'undefined' && showDebug)
-          {
-            console.log(`Updated Quick Connect button to show IP: ${currentDeviceIP}`);
-          }
+          console.log(`Updated Quick Connect button to show IP: ${currentDeviceIP}`);
         }
 
         return true;
@@ -269,13 +263,7 @@
         }
 
         // 更新Quick Connect按钮状态
-        const quickConnectBtn = document.getElementById('quickConnectBtn');
-        if (quickConnectBtn)
-        {
-          quickConnectBtn.textContent = currentDeviceIP;
-          quickConnectBtn.style.backgroundColor = '#4CAF50';
-          quickConnectBtn.setAttribute('data-connected', 'true');
-        }
+        updateQuickConnectButtonState(currentDeviceIP);
 
         // 更新配置中的连接时间并保存
         config.lastConnectedTime = new Date().toISOString();
@@ -2066,6 +2054,45 @@ ${code}
       }
     }
 
+    // 检查串口是否为有效的usbserial端口（Mac系统下排除后缀全为0的端口）
+    function isValidUsbserialPort(port)
+    {
+      try
+      {
+        const portInfo = port.getInfo();
+        const os = detectOperatingSystem();
+
+        if (os === 'mac')
+        {
+          // 在Mac系统下，检查是否为usbserial端口且后缀不全为0
+          const vendorId = portInfo.usbVendorId?.toString(16).toUpperCase() || '0000';
+          const productId = portInfo.usbProductId?.toString(16).toUpperCase() || '0000';
+
+          // 检查vendorId和productId是否全为0
+          if (vendorId === '0000' && productId === '0000')
+          {
+            return false;
+          }
+
+          // 检查是否为usbserial相关端口
+          if (portInfo.usbVendorId === 0x1a86 || portInfo.usbVendorId === 0x10c4)
+          {
+            return true;
+          }
+
+          // 对于其他USB串口，检查是否包含有效的vendorId和productId
+          return vendorId !== '0000' && productId !== '0000';
+        }
+
+        // 其他系统保持原有逻辑
+        return true;
+      } catch (error)
+      {
+        console.warn("Cannot get port info for validation:", error);
+        return false;
+      }
+    }
+
     // 获取ESP32串口显示名称（保留用于ESP32特定功能）
     function getESP32PortDisplayName(port)
     {
@@ -2117,8 +2144,11 @@ ${code}
         // 获取所有已授权的串口
         const ports = await navigator.serial.getPorts();
 
+        // 过滤有效的串口（在Mac系统下排除后缀全为0的端口）
+        const validPorts = ports.filter(port => isValidUsbserialPort(port));
+
         // 过滤出ESP32串口
-        const esp32Ports = ports.filter(port => isESP32SerialPort(port));
+        const esp32Ports = validPorts.filter(port => isESP32SerialPort(port));
 
         console.log(getText("foundESP32Ports").replace("{count}", esp32Ports.length));
         return esp32Ports;
@@ -2134,13 +2164,36 @@ ${code}
     {
       return new Promise((resolve, reject) =>
       {
+        console.log("Creating ESP32 port selector dialog...");
+
         // 创建遮罩层
         const overlay = document.createElement('div');
         overlay.className = 'esp32-port-selector';
 
+        // 添加调试样式
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.background = 'rgba(0, 0, 0, 0.5)';
+        overlay.style.zIndex = '1000';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+
         // 创建对话框
         const dialog = document.createElement('div');
         dialog.className = 'esp32-port-dialog';
+
+        // 添加调试样式
+        dialog.style.background = 'white';
+        dialog.style.padding = '20px';
+        dialog.style.borderRadius = '8px';
+        dialog.style.minWidth = '300px';
+        dialog.style.maxWidth = '500px';
+        dialog.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+        dialog.style.margin = '20px';
 
         dialog.innerHTML = `
           <h3 style="margin: 0 0 15px 0; color: #333;">${getText("selectESP32Port")}</h3>
@@ -2178,7 +2231,13 @@ ${code}
           reject(new Error(getText("userCancelledSelection")));
         };
 
+        // 将对话框添加到遮罩层中
+        overlay.appendChild(dialog);
         document.body.appendChild(overlay);
+
+        console.log("ESP32 port selector dialog created and added to DOM");
+        console.log("Overlay element:", overlay);
+        console.log("Dialog element:", dialog);
       });
     }
 
@@ -2187,13 +2246,36 @@ ${code}
     {
       return new Promise((resolve, reject) =>
       {
+        console.log("Creating all ports selector dialog...");
+
         // 创建遮罩层
         const overlay = document.createElement('div');
         overlay.className = 'esp32-port-selector';
 
+        // 添加调试样式
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.background = 'rgba(0, 0, 0, 0.5)';
+        overlay.style.zIndex = '1000';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+
         // 创建对话框
         const dialog = document.createElement('div');
         dialog.className = 'esp32-port-dialog';
+
+        // 添加调试样式
+        dialog.style.background = 'white';
+        dialog.style.padding = '20px';
+        dialog.style.borderRadius = '8px';
+        dialog.style.minWidth = '300px';
+        dialog.style.maxWidth = '500px';
+        dialog.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+        dialog.style.margin = '20px';
 
         dialog.innerHTML = `
           <h3 style="margin: 0 0 15px 0; color: #333;">${getText("selectSerialPort")}</h3>
@@ -2234,6 +2316,10 @@ ${code}
         // 将对话框添加到遮罩层中
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
+
+        console.log("All ports selector dialog created and added to DOM");
+        console.log("Overlay element:", overlay);
+        console.log("Dialog element:", dialog);
       });
     }
 
@@ -2249,8 +2335,18 @@ ${code}
         const allPorts = await navigator.serial.getPorts();
         console.log(getText("foundAuthorizedPorts").replace("{count}", allPorts.length));
 
-        // 显示所有串口的简要信息
-        allPorts.forEach((port, index) =>
+        // 过滤有效的串口（在Mac系统下排除后缀全为0的端口）
+        const validPorts = allPorts.filter(port => isValidUsbserialPort(port));
+        console.log(`Found ${validPorts.length} valid ports after filtering (${allPorts.length - validPorts.length} ports filtered out)`);
+
+        // 在Mac系统下显示过滤详情
+        if (os === 'mac' && allPorts.length !== validPorts.length)
+        {
+          console.log("On macOS, filtered out ports with vendorId=0x0000 and productId=0x0000");
+        }
+
+        // 显示有效串口的简要信息
+        validPorts.forEach((port, index) =>
         {
           try
           {
@@ -2263,29 +2359,29 @@ ${code}
         });
 
         // 获取ESP32串口列表
-        const esp32Ports = allPorts.filter(port => isESP32SerialPort(port));
+        const esp32Ports = validPorts.filter(port => isESP32SerialPort(port));
 
         if (esp32Ports.length === 0)
         {
-          // 如果没有找到ESP32串口，检查所有可用串口
+          // 如果没有找到ESP32串口，检查所有有效串口
           console.log(getText("showingAllPorts"));
 
-          if (allPorts.length === 0)
+          if (validPorts.length === 0)
           {
-            // 如果没有任何已授权的串口，请求用户选择新的串口
+            // 如果没有任何有效的串口，直接请求用户选择新的串口
             console.log(getText("noAuthorizedPorts"));
             const selectPort = await navigator.serial.requestPort();
             port = selectPort;
-          } else if (allPorts.length === 1)
+          } else if (validPorts.length === 1)
           {
-            // 如果只有一个串口，自动连接
+            // 如果只有一个有效串口，自动连接
             console.log(getText("foundOnePort"));
-            port = allPorts[0];
+            port = validPorts[0];
           } else
           {
-            // 显示所有可用串口的选择对话框
-            console.log(getText("showingPortsForSelection").replace("{count}", allPorts.length));
-            port = await createAllPortsSelector(allPorts);
+            // 显示所有有效串口的选择对话框
+            console.log(getText("showingPortsForSelection").replace("{count}", validPorts.length));
+            port = await createAllPortsSelector(validPorts);
           }
         } else if (esp32Ports.length === 1)
         {
@@ -2322,7 +2418,27 @@ ${code}
           }
         }
 
-        // 显示串口界面，使用flex布局但不改变整体宽度
+        // 设置读取器和写入器（用于验证）
+        reader = port.readable.getReader();
+        writer = port.writable.getWriter();
+
+        // 验证串口连接 - 发送'?'字符并等待回复
+        console.log("Validating serial connection...");
+        const validationResult = await validateSerialConnection();
+
+        if (!validationResult)
+        {
+          // 验证失败，立即显示错误窗口，然后快速关闭串口
+          console.log(getText("serialValidationFailed"));
+          showCustomAlert(getText("serialValidationFailed"), getText("connectionFailed"));
+          // 快速关闭串口，不等待超时
+          quickCloseSerialPort();
+          return;
+        }
+
+        console.log(getText("serialValidationSuccess"));
+
+        // 验证成功后显示串口界面
         const serialInterface = document.getElementById('serialInterface');
         serialInterface.style.display = 'flex';
 
@@ -2377,12 +2493,8 @@ ${code}
           repositionUndoRedoButtons();
         }, 100);
 
-        // 设置读取器
-        reader = port.readable.getReader();
+        // 开始读取串口数据
         readSerialData();
-
-        // 设置写入器
-        writer = port.writable.getWriter();
 
         // 连接成功后自动发送'w'指令获取IP地址
         await sendWifiCommand();
@@ -2406,13 +2518,7 @@ ${code}
         } else
         {
           // 如果有IP地址，保持按钮显示IP
-          const quickConnectBtn = document.getElementById('quickConnectBtn');
-          if (quickConnectBtn)
-          {
-            quickConnectBtn.textContent = currentDeviceIP;
-            quickConnectBtn.style.backgroundColor = '#4CAF50';
-            quickConnectBtn.setAttribute('data-connected', 'true');
-          }
+          updateQuickConnectButtonState(currentDeviceIP);
           if (typeof showDebug !== 'undefined' && showDebug)
           {
             console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
@@ -2420,6 +2526,62 @@ ${code}
         }
         // 抛出异常，让调用者知道连接失败
         throw error;
+      }
+    }
+
+    // 快速关闭串口（用于验证失败时，不等待超时）
+    function quickCloseSerialPort()
+    {
+      try
+      {
+        if (reader)
+        {
+          reader.cancel().catch(() => { }); // 忽略错误
+          reader = null;
+        }
+
+        if (writer)
+        {
+          writer.close().catch(() => { }); // 忽略错误
+          writer = null;
+        }
+
+        if (port)
+        {
+          port.close().catch(() => { }); // 忽略错误
+          port = null;
+        }
+
+        // 快速重置UI状态
+        const serialInterface = document.getElementById('serialInterface');
+        if (serialInterface) serialInterface.style.display = 'none';
+
+        const serialContainer = document.getElementById('serialContainer');
+        if (serialContainer) serialContainer.classList.remove('connected');
+
+        const openSerialBtn = document.getElementById('openSerialBtn');
+        if (openSerialBtn) openSerialBtn.style.display = 'inline-flex';
+
+        const showSerialTimestampBtn = document.getElementById('showSerialTimestampBtn');
+        if (showSerialTimestampBtn) showSerialTimestampBtn.style.display = 'none';
+
+        const closeSerialBtn = document.getElementById('closeSerialBtn');
+        if (closeSerialBtn) closeSerialBtn.style.display = 'none';
+
+        const clearSerialBtn = document.getElementById('clearSerialBtn');
+        if (clearSerialBtn) clearSerialBtn.style.display = 'none';
+
+        // 重置串口监视器标题
+        const serialTitle = document.getElementById('serialOutputTitle');
+        if (serialTitle)
+        {
+          serialTitle.textContent = getText("serialOutput");
+        }
+
+        console.log('Quick serial port close completed');
+      } catch (error)
+      {
+        console.warn('Quick close error:', error);
       }
     }
 
@@ -2520,13 +2682,7 @@ ${code}
         } else
         {
           // 如果有IP地址，保持按钮显示IP
-          const quickConnectBtn = document.getElementById('quickConnectBtn');
-          if (quickConnectBtn)
-          {
-            quickConnectBtn.textContent = currentDeviceIP;
-            quickConnectBtn.style.backgroundColor = '#4CAF50';
-            quickConnectBtn.setAttribute('data-connected', 'true');
-          }
+          updateQuickConnectButtonState(currentDeviceIP);
         }
 
         // 强制重新调整工作区大小
@@ -2705,6 +2861,57 @@ ${code}
       }
     }
 
+    // 更新快速连接按钮状态（统一管理函数）
+    function updateQuickConnectButtonState(ip = null)
+    {
+      const quickConnectBtn = document.getElementById('quickConnectBtn');
+      if (!quickConnectBtn) return;
+
+      if (ip)
+      {
+        // 显示IP地址（已连接状态）
+        quickConnectBtn.textContent = ip;
+        quickConnectBtn.style.backgroundColor = '#4CAF50';
+        quickConnectBtn.setAttribute('data-connected', 'true');
+      } else
+      {
+        // 显示默认文本（未连接状态）
+        quickConnectBtn.textContent = getText("quickConnect");
+        quickConnectBtn.style.backgroundColor = '';
+        quickConnectBtn.removeAttribute('data-connected');
+      }
+    }
+
+    // 语言切换时处理快速连接按钮状态
+    function handleQuickConnectButtonOnLanguageChange()
+    {
+      const quickConnectBtn = document.getElementById('quickConnectBtn');
+      if (!quickConnectBtn) return;
+
+      if (quickConnectBtn.hasAttribute('data-connected'))
+      {
+        // 如果按钮标记为已连接，检查是否有有效的IP地址
+        if (currentDeviceIP && currentDeviceIP !== '192.168.4.1')
+        {
+          // 有有效的IP地址，保持显示IP地址
+          quickConnectBtn.textContent = currentDeviceIP;
+        } else
+        {
+          // 没有有效的IP地址，重置为未连接状态
+          quickConnectBtn.textContent = getText("quickConnect");
+          quickConnectBtn.removeAttribute('data-connected');
+          quickConnectBtn.style.backgroundColor = '';
+        }
+      } else
+      {
+        // 如果按钮未连接，更新为当前语言的文本
+        quickConnectBtn.textContent = getText("quickConnect");
+      }
+    }
+
+    // 将函数暴露到全局作用域，供translations.js调用
+    window.handleQuickConnectButtonOnLanguageChange = handleQuickConnectButtonOnLanguageChange;
+
     // 显示通知消息
     function showNotification(message, type = 'info')
     {
@@ -2817,6 +3024,154 @@ ${code}
 
         // 显示错误消息
         showNotification(getText("wifiCommandFailed") || "Failed to send WiFi configuration. Please check your serial connection.", 'error');
+      }
+    }
+
+
+
+
+
+    // 测试串口选择窗口居中显示
+    function testPortSelectorCentering()
+    {
+      console.log("Testing port selector centering...");
+
+      // 创建测试端口数据
+      const testPorts = [
+        { getInfo: () => ({ usbVendorId: 0x1a86, usbProductId: 0x7523 }) },
+        { getInfo: () => ({ usbVendorId: 0x10c4, usbProductId: 0xea60 }) }
+      ];
+
+      // 显示测试对话框
+      createESP32PortSelector(testPorts).then(port =>
+      {
+        console.log("Test port selected:", port);
+      }).catch(error =>
+      {
+        console.log("Test cancelled or failed:", error);
+      });
+    }
+
+    // 显示自定义警告窗口
+    function showCustomAlert(message, title = null)
+    {
+      return new Promise((resolve) =>
+      {
+        // 创建遮罩层
+        const overlay = document.createElement('div');
+        overlay.className = 'alert-overlay';
+
+        // 创建对话框
+        const dialog = document.createElement('div');
+        dialog.className = 'alert-dialog';
+
+        // 处理换行符，将\n转换为<br>标签
+        const formattedMessage = message.replace(/\n/g, '<br>');
+
+        // 直接设置内容，避免innerHTML的性能开销
+        const h3 = document.createElement('h3');
+        h3.textContent = title || getText("error");
+
+        const p = document.createElement('p');
+        p.innerHTML = formattedMessage;
+
+        const button = document.createElement('button');
+        button.textContent = getText("ok");
+        button.onclick = () =>
+        {
+          document.body.removeChild(overlay);
+          resolve();
+        };
+
+        dialog.appendChild(h3);
+        dialog.appendChild(p);
+        dialog.appendChild(button);
+
+        // 将对话框添加到遮罩层中
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+      });
+    }
+
+    // 验证串口连接 - 发送'?'字符并检查回复
+    async function validateSerialConnection()
+    {
+      try
+      {
+        // 清空之前的缓冲区
+        serialBufferText = '';
+        serialBuffer = '';
+
+        // 发送'?'字符
+        const encoder = new TextEncoder();
+        const data = encoder.encode('?');
+        await writer.write(data);
+        console.log("Sent '?' for validation");
+
+        // 等待50ms看是否有回复（减少等待时间）
+        const startTime = Date.now();
+        let response = '';
+        let validationTimeout = false;
+
+        // 设置50ms超时（减少超时时间）
+        const timeoutPromise = new Promise((resolve) =>
+        {
+          setTimeout(() =>
+          {
+            validationTimeout = true;
+            resolve();
+          }, 50);
+        });
+
+        // 等待回复或超时
+        const responsePromise = new Promise(async (resolve) =>
+        {
+          while (!validationTimeout && Date.now() - startTime < 50)
+          {
+            try
+            {
+              const { value, done } = await reader.read();
+              if (done) break;
+
+              const text = new TextDecoder().decode(value);
+              response += text;
+
+              // 检查是否包含Petoi设备标识
+              if (response.includes('Bittle') || response.includes('Nybble') || response.includes('Petoi'))
+              {
+                console.log("Received valid response:", response);
+                resolve(true);
+                return;
+              }
+
+              // 如果已经超过50ms，停止等待
+              if (Date.now() - startTime >= 50)
+              {
+                break;
+              }
+            } catch (error)
+            {
+              console.warn("Error reading during validation:", error);
+              break;
+            }
+          }
+          resolve(false);
+        });
+
+        // 等待第一个完成的Promise
+        const result = await Promise.race([responsePromise, timeoutPromise]);
+
+        if (validationTimeout)
+        {
+          console.log(getText("serialValidationTimeout"));
+          return false;
+        }
+
+        return result;
+      } catch (error)
+      {
+        console.error(getText("serialValidationError"), error);
+        return false;
       }
     }
 
@@ -2998,13 +3353,7 @@ ${code}
           } else
           {
             // 如果有IP地址，保持按钮显示IP
-            const quickConnectBtn = document.getElementById('quickConnectBtn');
-            if (quickConnectBtn)
-            {
-              quickConnectBtn.textContent = currentDeviceIP;
-              quickConnectBtn.style.backgroundColor = '#4CAF50';
-              quickConnectBtn.setAttribute('data-connected', 'true');
-            }
+            updateQuickConnectButtonState(currentDeviceIP);
             if (typeof showDebug !== 'undefined' && showDebug)
             {
               console.log(`Kept Quick Connect button showing IP: ${currentDeviceIP}`);
@@ -3245,13 +3594,7 @@ ${code}
           currentDeviceIP = ip;
 
           // 修改Quick Connect按钮样式和文本
-          const quickConnectBtn = document.getElementById('quickConnectBtn');
-          if (quickConnectBtn)
-          {
-            quickConnectBtn.textContent = ip;
-            quickConnectBtn.style.backgroundColor = '#4CAF50'; // 绿色背景
-            quickConnectBtn.setAttribute('data-connected', 'true'); // 标记连接状态
-          }
+          updateQuickConnectButtonState(ip);
 
           // 查找工作区中的make_connection积木块并更新IP地址
           const makeConnectionBlocks = workspace.getBlocksByType('make_connection');
