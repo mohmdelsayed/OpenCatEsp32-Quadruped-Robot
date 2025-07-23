@@ -1945,11 +1945,12 @@ ${code}
 
     // ESP32开发板使用的USB串口芯片配置
     const ESP32_USB_CHIPS = [
-      { vendorId: 0x1a86, productId: 0x7523, name: 'CH340' },  // CH340
-      { vendorId: 0x1a86, productId: 0x55d4, name: 'CH343' },  // CH343
-      { vendorId: 0x10c4, productId: 0xea60, name: 'CP2102' }, // CP2102
-      { vendorId: 0x10c4, productId: 0xea61, name: 'CP2102' }, // CP2102 (某些变种)
-      { vendorId: 0x1a86, productId: 0x5523, name: 'CH340' },  // CH340 (某些变种)
+      // 通用串口芯片厂商（只检查vendorId，不限制productId）
+      { vendorId: 0x1a86, name: 'CH340/CH343' },  // 沁恒微电子（CH340、CH343等）
+      { vendorId: 0x10c4, name: 'CP2102' },       // Silicon Labs（CP2102等）
+      // ESP32内置USB（需要精确匹配）
+      { vendorId: 0x303a, productId: 0x1001, name: 'ESP32-S2' }, // ESP32-S2 内置USB
+      { vendorId: 0x303a, productId: 0x0002, name: 'ESP32-S3' }, // ESP32-S3 内置USB
     ];
 
     // 系统检测函数
@@ -1976,6 +1977,9 @@ ${code}
       }
     }
 
+    // 全局变量存储操作系统类型，页面加载时初始化一次
+    const OPERATING_SYSTEM = detectOperatingSystem();
+
     // 检查串口是否为ESP32开发板使用的芯片
     function isESP32SerialPort(port)
     {
@@ -1988,9 +1992,16 @@ ${code}
         }
 
         return ESP32_USB_CHIPS.some(chip =>
-          chip.vendorId === portInfo.usbVendorId &&
-          chip.productId === portInfo.usbProductId
-        );
+        {
+          // 对于有productId的条目（ESP32-S2/S3），需要精确匹配
+          if (chip.productId !== undefined)
+          {
+            return chip.vendorId === portInfo.usbVendorId &&
+              chip.productId === portInfo.usbProductId;
+          }
+          // 对于通用芯片（CH340/CP2102），只检查vendorId
+          return chip.vendorId === portInfo.usbVendorId;
+        });
       } catch (error)
       {
         console.warn(getText("cannotGetPortInfo"), error);
@@ -2004,7 +2015,7 @@ ${code}
       try
       {
         const portInfo = port.getInfo();
-        const os = detectOperatingSystem();
+        const os = OPERATING_SYSTEM;
 
         if (os === 'mac')
         {
@@ -2036,9 +2047,14 @@ ${code}
         {
           // Windows: 显示芯片名称
           const chip = ESP32_USB_CHIPS.find(chip =>
-            chip.vendorId === portInfo.usbVendorId &&
-            chip.productId === portInfo.usbProductId
-          );
+          {
+            if (chip.productId !== undefined)
+            {
+              return chip.vendorId === portInfo.usbVendorId &&
+                chip.productId === portInfo.usbProductId;
+            }
+            return chip.vendorId === portInfo.usbVendorId;
+          });
           return chip ? chip.name : 'USB Serial';
         } else
         {
@@ -2054,13 +2070,122 @@ ${code}
       }
     }
 
+    // 生成简短的4位伪序列号（基于端口在列表中的位置）
+    function generatePortPseudoSerial(port, allPorts, sameTypePorts)
+    {
+      try
+      {
+        // 获取当前端口在相同类型设备中的索引
+        const indexInSameType = sameTypePorts.indexOf(port);
+        const deviceNumber = indexInSameType >= 0 ? indexInSameType + 1 : 1;
+
+        // 获取当前端口在所有端口中的索引
+        const indexInAll = allPorts.indexOf(port);
+        const globalIndex = indexInAll >= 0 ? indexInAll : 0;
+
+        // 生成简短的4位数字标识
+        // 基数从1000开始，确保是4位数
+        const baseId = 1000 + (deviceNumber * 10) + (globalIndex % 10);
+
+        return baseId.toString();
+      } catch (error)
+      {
+        // 如果生成失败，使用随机4位数
+        const randomId = 1000 + Math.floor(Math.random() * 9000);
+        return randomId.toString();
+      }
+    }
+
+    // 获取串口智能显示名称（多设备时只显示有区分度的部分）
+    function getSmartPortDisplayName(port, allPorts)
+    {
+      try
+      {
+        // 如果只有一个设备，直接显示完整名称
+        if (!allPorts || allPorts.length <= 1)
+        {
+          return getSerialPortDisplayName(port);
+        }
+
+        // 获取所有设备的完整名称
+        const allNames = allPorts.map(p => getSerialPortDisplayName(p));
+        const currentName = getSerialPortDisplayName(port);
+
+        // 如果名称都不同，直接返回
+        const duplicateNames = allNames.filter(name => name === currentName);
+        if (duplicateNames.length <= 1)
+        {
+          return currentName;
+        }
+
+        // 对于有相同前缀的设备，生成类似真实设备名称的显示
+        const portInfo = port.getInfo();
+        const os = OPERATING_SYSTEM;
+
+        // 获取芯片信息
+        const sameTypeChip = ESP32_USB_CHIPS.find(chip =>
+        {
+          if (chip.productId !== undefined)
+          {
+            return chip.vendorId === portInfo.usbVendorId &&
+              chip.productId === portInfo.usbProductId;
+          }
+          return chip.vendorId === portInfo.usbVendorId;
+        });
+
+        const chipName = sameTypeChip ? sameTypeChip.name : 'USB';
+
+        // 获取相同类型的端口列表
+        const sameTypePorts = allPorts.filter(p =>
+        {
+          try
+          {
+            const pInfo = p.getInfo();
+            return pInfo.usbVendorId === portInfo.usbVendorId &&
+              pInfo.usbProductId === portInfo.usbProductId;
+          } catch (e)
+          {
+            return false;
+          }
+        });
+
+        // 生成伪序列号来区分设备
+        const pseudoSerial = generatePortPseudoSerial(port, allPorts, sameTypePorts);
+
+        // 调试信息（仅在调试模式下显示）
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("generatedPseudoSerial").replace("{chipName}", chipName).replace("{serial}", pseudoSerial).replace("{index}", sameTypePorts.indexOf(port) + 1).replace("{total}", sameTypePorts.length));
+        }
+
+        if (os === 'mac')
+        {
+          // macOS: 使用简洁的4位数字
+          return `cu.wchusbserial${pseudoSerial}`;
+        } else if (os === 'linux')
+        {
+          return `ttyUSB-${pseudoSerial}`;
+        } else if (os === 'windows')
+        {
+          return `${chipName}(${pseudoSerial})`;
+        } else
+        {
+          return `${chipName}-${pseudoSerial}`;
+        }
+      } catch (error)
+      {
+        console.warn(getText("cannotGetPortDisplayName"), error);
+        return 'Serial Port';
+      }
+    }
+
     // 检查串口是否为有效的usbserial端口（Mac系统下排除后缀全为0的端口）
     function isValidUsbserialPort(port)
     {
       try
       {
         const portInfo = port.getInfo();
-        const os = detectOperatingSystem();
+        const os = OPERATING_SYSTEM;
 
         if (os === 'mac')
         {
@@ -2100,11 +2225,16 @@ ${code}
       {
         const portInfo = port.getInfo();
         const chip = ESP32_USB_CHIPS.find(chip =>
-          chip.vendorId === portInfo.usbVendorId &&
-          chip.productId === portInfo.usbProductId
-        );
+        {
+          if (chip.productId !== undefined)
+          {
+            return chip.vendorId === portInfo.usbVendorId &&
+              chip.productId === portInfo.usbProductId;
+          }
+          return chip.vendorId === portInfo.usbVendorId;
+        });
 
-        const os = detectOperatingSystem();
+        const os = OPERATING_SYSTEM;
         let displayName = '';
 
         if (chip)
@@ -2164,7 +2294,10 @@ ${code}
     {
       return new Promise((resolve, reject) =>
       {
-        console.log("Creating ESP32 port selector dialog...");
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("creatingESP32PortSelector"));
+        }
 
         // 创建遮罩层
         const overlay = document.createElement('div');
@@ -2200,7 +2333,7 @@ ${code}
           <div style="margin-bottom: 15px;">
             ${ports.map((port, index) =>
         {
-          const displayName = getESP32PortDisplayName(port);
+          const displayName = getSmartPortDisplayName(port, ports);
           return `
                 <div class="esp32-port-option" onclick="selectESP32Port(${index})">
                   <strong>${displayName}</strong>
@@ -2235,9 +2368,10 @@ ${code}
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
 
-        console.log("ESP32 port selector dialog created and added to DOM");
-        console.log("Overlay element:", overlay);
-        console.log("Dialog element:", dialog);
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("esp32PortSelectorCreated"));
+        }
       });
     }
 
@@ -2282,7 +2416,7 @@ ${code}
           <div style="margin-bottom: 15px;">
             ${ports.map((port, index) =>
         {
-          const displayName = getSerialPortDisplayName(port);
+          const displayName = getSmartPortDisplayName(port, ports);
           return `
                 <div class="esp32-port-option" onclick="selectAllPort(${index})">
                   <strong>${displayName}</strong>
@@ -2318,8 +2452,6 @@ ${code}
         document.body.appendChild(overlay);
 
         console.log("All ports selector dialog created and added to DOM");
-        console.log("Overlay element:", overlay);
-        console.log("Dialog element:", dialog);
       });
     }
 
@@ -2328,70 +2460,111 @@ ${code}
       try
       {
         // 检测操作系统
-        const os = detectOperatingSystem();
-        console.log(getText("detectedOS").replace("{os}", os));
+        const os = OPERATING_SYSTEM;
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("detectedOS").replace("{os}", os));
+        }
 
         // 获取所有已授权的串口
         const allPorts = await navigator.serial.getPorts();
-        console.log(getText("foundAuthorizedPorts").replace("{count}", allPorts.length));
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("foundAuthorizedPorts").replace("{count}", allPorts.length));
+        }
 
         // 过滤有效的串口（在Mac系统下排除后缀全为0的端口）
         const validPorts = allPorts.filter(port => isValidUsbserialPort(port));
-        console.log(`Found ${validPorts.length} valid ports after filtering (${allPorts.length - validPorts.length} ports filtered out)`);
-
-        // 在Mac系统下显示过滤详情
-        if (os === 'mac' && allPorts.length !== validPorts.length)
+        if (typeof showDebug !== 'undefined' && showDebug)
         {
-          console.log("On macOS, filtered out ports with vendorId=0x0000 and productId=0x0000");
+          console.log(getText("validPortsAfterFiltering").replace("{valid}", validPorts.length).replace("{filtered}", allPorts.length - validPorts.length));
+
+          // 在Mac系统下显示过滤详情
+          if (os === 'mac' && allPorts.length !== validPorts.length)
+          {
+            console.log("On macOS, filtered out ports with vendorId=0x0000 and productId=0x0000");
+          }
         }
 
         // 显示有效串口的简要信息
-        validPorts.forEach((port, index) =>
+        if (typeof showDebug !== 'undefined' && showDebug)
         {
-          try
+          validPorts.forEach((port, index) =>
           {
-            const displayName = getSerialPortDisplayName(port);
-            console.log(getText("portInfo").replace("{index}", index + 1).replace("{name}", displayName));
-          } catch (error)
-          {
-            console.log(getText("portInfoError").replace("{index}", index + 1));
-          }
-        });
+            try
+            {
+              const displayName = getSmartPortDisplayName(port, validPorts);
+              const portInfo = port.getInfo();
+              const isESP32 = isESP32SerialPort(port);
+              console.log(getText("portInfo").replace("{index}", index + 1).replace("{name}", displayName));
+
+              // 显示硬件信息（用于诊断端口识别问题）
+              console.log(getText("hardwareInfo").replace("{vid}", portInfo.usbVendorId?.toString(16)).replace("{pid}", portInfo.usbProductId?.toString(16)).replace("{isESP32}", isESP32));
+            } catch (error)
+            {
+              console.log(getText("portInfoError").replace("{index}", index + 1));
+            }
+          });
+        }
 
         // 获取ESP32串口列表
         const esp32Ports = validPorts.filter(port => isESP32SerialPort(port));
 
+        // 显示ESP32端口检测结果
+        if (typeof showDebug !== 'undefined' && showDebug)
+        {
+          console.log(getText("esp32DetectionResult").replace("{esp32Count}", esp32Ports.length).replace("{totalCount}", validPorts.length));
+        }
+
         if (esp32Ports.length === 0)
         {
           // 如果没有找到ESP32串口，检查所有有效串口
-          console.log(getText("showingAllPorts"));
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log(getText("showingAllPorts"));
+          }
 
           if (validPorts.length === 0)
           {
             // 如果没有任何有效的串口，直接请求用户选择新的串口
-            console.log(getText("noAuthorizedPorts"));
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log(getText("noAuthorizedPorts"));
+            }
             const selectPort = await navigator.serial.requestPort();
             port = selectPort;
           } else if (validPorts.length === 1)
           {
             // 如果只有一个有效串口，自动连接
-            console.log(getText("foundOnePort"));
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log(getText("foundOnePort"));
+            }
             port = validPorts[0];
           } else
           {
             // 显示所有有效串口的选择对话框
-            console.log(getText("showingPortsForSelection").replace("{count}", validPorts.length));
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log(getText("showingPortsForSelection").replace("{count}", validPorts.length));
+            }
             port = await createAllPortsSelector(validPorts);
           }
         } else if (esp32Ports.length === 1)
         {
           // 如果只有一个ESP32串口，直接使用
-          console.log(getText("foundOneESP32Port"));
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log(getText("foundOneESP32Port"));
+          }
           port = esp32Ports[0];
         } else
         {
           // 如果有多个ESP32串口，显示选择对话框
-          console.log(getText("foundMultipleESP32Ports").replace("{count}", esp32Ports.length));
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.log(getText("foundMultipleESP32Ports").replace("{count}", esp32Ports.length));
+          }
           port = await createESP32PortSelector(esp32Ports);
         }
 
@@ -2423,7 +2596,7 @@ ${code}
         writer = port.writable.getWriter();
 
         // 验证串口连接 - 发送'?'字符并等待回复
-        console.log("Validating serial connection...");
+        console.log(getText("validatingSerialConnection"));
         const validationResult = await validateSerialConnection();
 
         if (!validationResult)
@@ -3093,6 +3266,51 @@ ${code}
       });
     }
 
+    // 添加串口消息到监视器
+    function addSerialMessage(message)
+    {
+      const outputDiv = document.getElementById('serialOutput');
+      if (!outputDiv) return;
+
+      const currentTime = Date.now();
+
+      // 创建时间戳容器
+      const timestampSpan = document.createElement('span');
+      timestampSpan.className = 'timestamp';
+      timestampSpan.textContent = showSerialTimestamp ? `${getFormattedTimestamp()} ` : '';
+      timestampSpan.style.display = showSerialTimestamp ? 'inline' : 'none';
+      timestampSpan.style.color = '#888';
+      timestampSpan.style.fontWeight = 'normal';
+
+      // 创建消息内容容器
+      const messageSpan = document.createElement('span');
+      messageSpan.className = 'message-content';
+      messageSpan.textContent = message;
+      messageSpan.style.color = '#fff';
+
+      // 创建容器div
+      const lineDiv = document.createElement('div');
+      lineDiv.style.padding = '3px 0';
+      lineDiv.style.marginBottom = '3px';
+      lineDiv.style.fontSize = '13px';
+      lineDiv.style.whiteSpace = 'nowrap';
+      lineDiv.style.lineHeight = '1.3';
+
+      // 将时间戳和消息添加到容器中
+      lineDiv.appendChild(timestampSpan);
+      lineDiv.appendChild(messageSpan);
+
+      outputDiv.appendChild(lineDiv);
+
+      // 滚动到底部
+      outputDiv.scrollTop = outputDiv.scrollHeight;
+
+      // 更新最后消息时间
+      lastSerialMessageTime = currentTime;
+    }
+
+
+
     // 验证串口连接 - 发送'?'字符并检查回复
     async function validateSerialConnection()
     {
@@ -3106,27 +3324,30 @@ ${code}
         const encoder = new TextEncoder();
         const data = encoder.encode('?');
         await writer.write(data);
-        console.log("Sent '?' for validation");
+        console.log(getText("sentValidationCommand"));
 
-        // 等待50ms看是否有回复（减少等待时间）
+        // 根据操作系统设置等待时间
+        const os = OPERATING_SYSTEM;
+        const waitTime = (os === 'windows') ? 4000 : 200; // Windows: 4s, 其他: 200ms
+
         const startTime = Date.now();
         let response = '';
         let validationTimeout = false;
 
-        // 设置50ms超时（减少超时时间）
+        // 设置超时时间
         const timeoutPromise = new Promise((resolve) =>
         {
           setTimeout(() =>
           {
             validationTimeout = true;
             resolve();
-          }, 50);
+          }, waitTime);
         });
 
         // 等待回复或超时
         const responsePromise = new Promise(async (resolve) =>
         {
-          while (!validationTimeout && Date.now() - startTime < 50)
+          while (!validationTimeout && Date.now() - startTime < waitTime)
           {
             try
             {
@@ -3137,15 +3358,19 @@ ${code}
               response += text;
 
               // 检查是否包含Petoi设备标识
-              if (response.includes('Bittle') || response.includes('Nybble') || response.includes('Petoi'))
+              if (response.includes('Bittle') || response.includes('Nybble') || response.includes('Petoi') || response.includes('Chero'))
               {
-                console.log("Received valid response:", response);
+                // 提取设备型号信息用于控制台显示
+                const cleanResponse = response.replace(/[\r\n?]+/g, ' ').trim();
+                const modelInfo = cleanResponse.replace(/\s*\?\s*$/, '').trim();
+                console.log(getText("model") + ":", modelInfo);
+
                 resolve(true);
                 return;
               }
 
-              // 如果已经超过50ms，停止等待
-              if (Date.now() - startTime >= 50)
+              // 如果已经超过等待时间，停止等待
+              if (Date.now() - startTime >= waitTime)
               {
                 break;
               }
