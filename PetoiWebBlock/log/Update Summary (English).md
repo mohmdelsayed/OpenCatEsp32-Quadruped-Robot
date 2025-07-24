@@ -17,6 +17,9 @@
 | 🔧 Advanced Features | **WiFi Configuration Enhancement** | Auto-configuration process, security improvements | `programblockly.html`, `styles.css` | 1. Serial connection fails<br>2. IP configuration fails<br>3. Auto-display WiFi configuration interface<br>4. User inputs WiFi information<br>5. Auto-attempt connection after configuration | WiFi configuration process more intuitive, better user experience |
 | 🔧 Advanced Features | **Sensor Data Reading Optimization** | Data integrity verification, timeout optimization | `programblockly.html`, `js/petoi_async_client.js` | 1. Use regex to verify data integrity<br>2. Improve data buffer management<br>3. Avoid data split display<br>4. Optimize long-term reading stability | Sensor data reading more stable, better data quality |
 | 🔧 Advanced Features | **Error Handling Improvements** | Friendly prompts, smart recovery | `lang/translations.js`, `programblockly.html` | 1. Provide more detailed error information<br>2. Add handling suggestions<br>3. Improve user-friendly error prompts<br>4. Increase error categorization | Error messages more friendly, users know how to handle problems |
+| 🔧 Advanced Features | **ESP32 Chip Recognition Simplification** | Simplified chip configuration list | `programblockly.html` | 1. Reduced from 11 specific configurations to 4 universal ones<br>2. CH340/CP2102 series only check vendor ID<br>3. Retain precise matching for ESP32-S2/S3<br>4. Auto-support new chip versions | Stronger compatibility, simpler maintenance, auto-support for new chips |
+| 🔗 Connection Management | **Serial Port Selection Flow Optimization** | Direct complete port selection list display | `programblockly.html`, `styles.css`, `lang/translations.js` | 1. Click "Connect Serial Port" to directly show complete selection list<br>2. Include authorized ports and "Select Other Port" option<br>3. Visual optimization with blue dashed border for other port option<br>4. Simplified from two-step operation to one-step | Operation simplified from two steps (check+click) to one step, more intuitive user experience |
+| 🔗 Connection Management | **Serial Port Validation Timeout Optimization** | Smart validation timeout adjustment based on OS | `programblockly.html` | 1. Detect operating system on connection<br>2. Windows: 4-second timeout (slower response)<br>3. Other systems: 200ms timeout (faster response)<br>4. Improved connection success rate | **Problem**: Same timeout for all systems, Windows slow response causes validation failure<br>**Solution**: Windows 4s, other systems 200ms, OS-specific optimization<br>**Improvement**: Higher connection success rate, optimized response speed |
 
 ## Technical Improvement Highlights
 
@@ -88,5 +91,28 @@
 - **WiFi Security**: Plain text password display → Masked display and memory cleanup
 - **Sensor Data**: Split errors → Complete and accurate
 - **Response Speed**: 60-second timeout → 5-15 seconds (4-12x improvement)
+- **Serial Port Selection**: Two-step operation complex → One-click display complete options
+- **Chip Compatibility**: Manual configuration for new chips → Auto-recognition of universal chips
+- **Validation Timeout**: Fixed timeout for all systems → OS-adaptive timeout (Windows 4s, others 200ms)
+
+## Latest Feature Improvements
+
+### ESP32 Chip Recognition Simplification
+- **Configuration Streamlining**: Reduced from 11 specific configurations to 4 universal configurations
+- **Universal Recognition**: CH340/CP2102 series only check manufacturer ID
+- **Auto-Compatibility**: Automatically support new chip versions without manual configuration
+- **Maintenance Simplification**: Significantly reduced configuration maintenance work
+
+### Serial Port Selection Flow Optimization
+- **One-Click Operation**: Click "Connect Serial Port" to directly display complete selection list
+- **Complete Options**: Includes authorized ports and "Select Other Port" option
+- **Visual Optimization**: "Select Other Port" uses blue dashed border and special styling
+- **Operation Simplification**: Simplified from two-step operation (check+click) to one-step operation
+
+### Serial Port Validation Timeout Optimization
+- **OS-Adaptive**: Automatically adjust timeout based on operating system
+- **Windows Optimization**: 4-second timeout for Windows systems (slower response)
+- **Other Systems Optimization**: 200ms timeout for Mac/Linux systems (faster response)
+- **Connection Success Rate**: Resolves connection failures caused by different system response speeds
 
 These modifications comprehensively improve the stability, response speed, user experience, and internationalization support of WebServer and WebCodingBlocks, making the system more intelligent, user-friendly, and internationalized. Significant improvements have been made particularly in connection management, program control, data display, and advanced features. 

@@ -1030,3 +1030,18 @@ body {
         font-size: 12px;
     }
 }
+
+/* ESP32端口选择对话框样式 */
+.esp32-port-system-option {
+    border: 2px dashed #007bff !important;
+    background-color: #f8f9ff !important;
+    margin-top: 10px !important;
+    transition: all 0.3s ease !important;
+}
+
+.esp32-port-system-option:hover {
+    background-color: #e6f2ff !important;
+    border-color: #0056b3 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}

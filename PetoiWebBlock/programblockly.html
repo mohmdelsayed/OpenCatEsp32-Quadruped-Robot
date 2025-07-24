@@ -2423,6 +2423,10 @@ ${code}
                 </div>
               `;
         }).join('')}
+            <div class="esp32-port-option esp32-port-system-option" onclick="selectSystemPort()">
+              <strong>🔍 ${getText("selectOtherPort")}</strong>
+              <small style="display: block; color: #666; margin-top: 2px;">${getText("selectOtherPortDesc")}</small>
+            </div>
           </div>
           <div class="esp32-port-buttons">
             <button class="cancel" onclick="cancelAllPortSelection()">${getText("cancel")}</button>
@@ -2435,14 +2439,44 @@ ${code}
           const selectedPort = ports[index];
           document.body.removeChild(overlay);
           delete window.selectAllPort;
+          delete window.selectSystemPort;
           delete window.cancelAllPortSelection;
           resolve(selectedPort);
+        };
+
+        window.selectSystemPort = async () =>
+        {
+          try
+          {
+            const systemPort = await navigator.serial.requestPort();
+            document.body.removeChild(overlay);
+            delete window.selectAllPort;
+            delete window.selectSystemPort;
+            delete window.cancelAllPortSelection;
+            resolve(systemPort);
+          } catch (error)
+          {
+            if (error.name === 'NotFoundError')
+            {
+              // 用户取消选择，不关闭对话框，让用户可以继续选择其他选项
+              console.log('User cancelled system port selection');
+            } else
+            {
+              console.error('Error in system port selection:', error);
+              document.body.removeChild(overlay);
+              delete window.selectAllPort;
+              delete window.selectSystemPort;
+              delete window.cancelAllPortSelection;
+              reject(error);
+            }
+          }
         };
 
         window.cancelAllPortSelection = () =>
         {
           document.body.removeChild(overlay);
           delete window.selectAllPort;
+          delete window.selectSystemPort;
           delete window.cancelAllPortSelection;
           reject(new Error(getText("userCancelledSelection")));
         };
@@ -2459,6 +2493,7 @@ ${code}
     {
       try
       {
+
         // 检测操作系统
         const os = OPERATING_SYSTEM;
         if (typeof showDebug !== 'undefined' && showDebug)
@@ -2516,56 +2551,24 @@ ${code}
           console.log(getText("esp32DetectionResult").replace("{esp32Count}", esp32Ports.length).replace("{totalCount}", validPorts.length));
         }
 
-        if (esp32Ports.length === 0)
+        // 总是显示完整的串口选择，包括系统选择选项
+        if (validPorts.length === 0)
         {
-          // 如果没有找到ESP32串口，检查所有有效串口
+          // 如果没有任何已授权的串口，直接请求用户选择新的串口
           if (typeof showDebug !== 'undefined' && showDebug)
           {
-            console.log(getText("showingAllPorts"));
+            console.log(getText("noAuthorizedPorts"));
           }
-
-          if (validPorts.length === 0)
-          {
-            // 如果没有任何有效的串口，直接请求用户选择新的串口
-            if (typeof showDebug !== 'undefined' && showDebug)
-            {
-              console.log(getText("noAuthorizedPorts"));
-            }
-            const selectPort = await navigator.serial.requestPort();
-            port = selectPort;
-          } else if (validPorts.length === 1)
-          {
-            // 如果只有一个有效串口，自动连接
-            if (typeof showDebug !== 'undefined' && showDebug)
-            {
-              console.log(getText("foundOnePort"));
-            }
-            port = validPorts[0];
-          } else
-          {
-            // 显示所有有效串口的选择对话框
-            if (typeof showDebug !== 'undefined' && showDebug)
-            {
-              console.log(getText("showingPortsForSelection").replace("{count}", validPorts.length));
-            }
-            port = await createAllPortsSelector(validPorts);
-          }
-        } else if (esp32Ports.length === 1)
-        {
-          // 如果只有一个ESP32串口，直接使用
-          if (typeof showDebug !== 'undefined' && showDebug)
-          {
-            console.log(getText("foundOneESP32Port"));
-          }
-          port = esp32Ports[0];
+          const selectPort = await navigator.serial.requestPort();
+          port = selectPort;
         } else
         {
-          // 如果有多个ESP32串口，显示选择对话框
+          // 显示包含所有端口选择的对话框（包括"选择其他端口"选项）
           if (typeof showDebug !== 'undefined' && showDebug)
           {
-            console.log(getText("foundMultipleESP32Ports").replace("{count}", esp32Ports.length));
+            console.log(getText("showingPortsForSelection").replace("{count}", validPorts.length));
           }
-          port = await createESP32PortSelector(esp32Ports);
+          port = await createAllPortsSelector(validPorts);
         }
 
         // 连接串口

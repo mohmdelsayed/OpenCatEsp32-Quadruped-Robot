@@ -23,6 +23,8 @@ const TRANSLATIONS = {
     "consoleLog": "控制台日志",
     "showTimestamp": "时间戳",
     "serialConnect": "连接串口",
+    "selectOtherPort": "选择其他端口",
+    "selectOtherPortDesc": "打开系统串口选择窗口",
     "quickConnect": "快速连接",
     "closeSerial": "关闭串口",
 
@@ -469,6 +471,8 @@ const TRANSLATIONS = {
     "consoleLog": "Console Log",
     "showTimestamp": "Timestamp",
     "serialConnect": "Connect Serial Port",
+    "selectOtherPort": "Select Other Port",
+    "selectOtherPortDesc": "Open system port selection dialog",
     "quickConnect": "Quick Connect",
     "closeSerial": "Close Serial",
 
@@ -914,6 +918,8 @@ const TRANSLATIONS = {
     "consoleLog": "コンソールログ",
     "showTimestamp": "タイムスタンプ",
     "serialConnect": "シリアルポートに接続",
+    "selectOtherPort": "他のポートを選択",
+    "selectOtherPortDesc": "システムポート選択ダイアログを開く",
     "quickConnect": "クイック接続",
     "closeSerial": "接続を閉じる",
 
@@ -1385,6 +1391,13 @@ function updateUITranslations()
         element.textContent = getText(key);
       }
     }
+  });
+
+  // 更新title属性的翻译
+  document.querySelectorAll('[data-i18n-title]').forEach(element =>
+  {
+    const titleKey = element.getAttribute('data-i18n-title');
+    element.title = getText(titleKey);
   });
 
   // 特殊处理快速连接按钮 - 调用HTML文件中的处理函数
