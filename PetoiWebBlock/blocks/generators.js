@@ -4,10 +4,11 @@
 
 // 辅助函数：包装异步操作，添加停止检查
 function wrapAsyncOperation(operation) {
-    return `(async () => { 
-  checkStopExecution();
+    return `checkStopExecution();
+await (async function() {
   ${operation}
-})();`;
+  return true;
+})()`;
 }
 
 // 代码生成:发送步态动作命令
@@ -45,6 +46,7 @@ Blockly.JavaScript.forBlock["posture"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
     const delay = block.getFieldValue("DELAY");
     const delayMs = Math.round(delay * 1000);
+    
     let code = wrapAsyncOperation(`const result = await webRequest("${cmd}", 10000, true); if (result !== null) console.log(result);`) + '\n';
     if (delayMs > 0) {
         // 对于长时间延时，分段检查停止标志
@@ -614,14 +616,21 @@ await (async function() {
 function encodeCommand(token, params) {
     if (token.charCodeAt(0) >= 65 && token.charCodeAt(0) <= 90) {
         // params is int array
-        let totalLen = token.length + params.length;
+        let finalParams = [...params];
+        
+        // 对于B命令（播放音乐），在末尾添加'~'字符
+        if (token === 'B') {
+            finalParams.push(126); // '~'的ASCII码
+        }
+        
+        let totalLen = token.length + finalParams.length;
         let buffer = new Uint8Array(totalLen);
         for (let i = 0; i < token.length; i++) {
             buffer[i] = token.charCodeAt(i);
         }
-        for (let i = 0; i < params.length; i++) {
+        for (let i = 0; i < finalParams.length; i++) {
             // 保证负数转成补码
-            buffer[token.length + i] = params[i] & 0xff;
+            buffer[token.length + i] = finalParams[i] & 0xff;
         }
         const dataText = String.fromCharCode.apply(null, buffer);
         return "b64:" + btoa(dataText);

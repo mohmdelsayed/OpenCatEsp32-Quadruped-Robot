@@ -9,7 +9,7 @@ class PetoiAsyncClient
     constructor(baseUrl = null)
     {
         this.baseUrl = baseUrl || `ws://${window.location.hostname}:81`;
-        this.taskTimeout = 20000; // 20秒默认超时（优化超时时间，提高响应速度）
+        this.taskTimeout = 60000; // 60秒默认超时（增加超时时间以适应复杂动作）
         this.ws = null;
         this.connected = false;
         this.pendingTasks = new Map();
@@ -18,15 +18,16 @@ class PetoiAsyncClient
         this.reconnectDelay = 500; // 减少初始重连延迟
         this.heartbeatInterval = null;
         this.heartbeatTimeout = null;
-        this.heartbeatIntervalMs = 3000;  // 3秒发送一次心跳（更频繁的心跳）
-        this.heartbeatTimeoutMs = 10000;  // 10秒没有响应就重连（更快的检测）
+        this.heartbeatIntervalMs = 5000;  // 5秒发送一次心跳（降低频率减少干扰）
+        this.heartbeatTimeoutMs = 60000;  // 60秒没有响应就重连（大幅增加超时时间）
         this.lastHeartbeatTime = 0;       // 记录最后一次心跳时间
+        this.heartbeatPaused = false;     // 跟踪心跳是否被暂停
         this.eventTarget = new EventTarget();
         this.clientId = Date.now().toString(); // 唯一客户端ID
         
         // 连接健康检查
         this.healthCheckInterval = null;
-        this.healthCheckIntervalMs = 5000; // 5秒检查一次连接健康状态（更频繁的检测）
+        this.healthCheckIntervalMs = 10000; // 10秒检查一次连接健康状态（减少频繁检查）
         this.autoReconnect = true; // 自动重连开关
         this.connectionTimeout = 10000; // 连接超时10秒（快速连接）
         
@@ -442,15 +443,32 @@ class PetoiAsyncClient
         const isComplexAction = commands.some(cmd => 
             cmd.includes('acrobatic_moves') ||
             cmd.includes('high_difficulty_action') ||
-            cmd.includes('complex_sequence')
+            cmd.includes('complex_sequence') ||
+            cmd.includes('clap') ||
+            cmd.includes('kclap') ||
+            cmd.includes('pee') ||
+            cmd.includes('kpee') ||
+            cmd.includes('hunt') ||
+            cmd.includes('khunt') ||
+            cmd.startsWith('b64:Q') ||  // 音乐播放命令 (B命令base64编码)
+            cmd.startsWith('b64:S') ||  // 复杂动作序列命令 (K命令base64编码)
+            (cmd.length > 50)           // 长命令通常是复杂操作
+        );
+        
+        // 检查是否为音乐播放命令（需要更长超时）
+        const isMusicCommand = commands.some(cmd => 
+            cmd.startsWith('b64:Q') ||
+            (cmd.startsWith('B ') && cmd.split(' ').length > 10)
         );
         
         if (isSensorCommand) {
             return 5000; // 传感器读取：5秒超时
+        } else if (isMusicCommand) {
+            return 120000; // 音乐播放：2分钟超时（120秒）
         } else if (isComplexAction) {
-            return 15000; // 复杂动作：15秒超时
+            return 45000; // 复杂动作：45秒超时（增加以适应clap等长时间动作）
         } else {
-            return 10000; // 普通命令：10秒超时
+            return 20000; // 普通命令：20秒超时（略微增加）
         }
     }
 
@@ -490,6 +508,13 @@ class PetoiAsyncClient
         // 如果没有指定超时时间，则自动判断
         const actualTimeout = timeout || this.getCommandTimeout(commands);
 
+        // 暂停心跳检测（避免长时间命令执行时心跳超时）
+        const wasHeartbeatActive = this.heartbeatInterval !== null;
+        if (wasHeartbeatActive && actualTimeout > 15000) { // 只对超过15秒的命令暂停心跳
+            this.stopHeartbeat();
+            this.heartbeatPaused = true;
+        }
+
         return new Promise((resolve, reject) => {
             const taskId = Date.now().toString();
             const message = {
@@ -501,7 +526,12 @@ class PetoiAsyncClient
 
             const timeoutId = setTimeout(() => {
                 this.pendingTasks.delete(taskId);
-                reject(new Error(getText('commandTimeout') + ' ' + taskId + ' ' + commands.join(' ') + ' (timeout: ' + actualTimeout + 'ms)'));
+                // 恢复心跳检测
+                if (this.heartbeatPaused) {
+                    this.startHeartbeat();
+                    this.heartbeatPaused = false;
+                }
+                reject(new Error(getText('taskTimeout').replace('{timeout}', actualTimeout)));
             }, actualTimeout);
 
             // 添加停止标志检查定时器（每100ms检查一次）
@@ -518,6 +548,12 @@ class PetoiAsyncClient
                 resolve: (result) => {
                     clearTimeout(timeoutId);
                     clearInterval(stopCheckInterval);
+                    this.pendingTasks.delete(taskId);
+                    // 恢复心跳检测
+                    if (this.heartbeatPaused) {
+                        this.startHeartbeat();
+                        this.heartbeatPaused = false;
+                    }
                     if (Array.isArray(command)) {
                         resolve(result.map(item => parseInt(item) || 0));
                     } else {
@@ -527,6 +563,12 @@ class PetoiAsyncClient
                 reject: (error) => {
                     clearTimeout(timeoutId);
                     clearInterval(stopCheckInterval);
+                    this.pendingTasks.delete(taskId);
+                    // 恢复心跳检测
+                    if (this.heartbeatPaused) {
+                        this.startHeartbeat();
+                        this.heartbeatPaused = false;
+                    }
                     reject(error);
                 }
             });
@@ -544,6 +586,11 @@ class PetoiAsyncClient
                 clearTimeout(timeoutId);
                 clearInterval(stopCheckInterval);
                 this.pendingTasks.delete(taskId);
+                // 恢复心跳检测（即使发送失败也要恢复）
+                if (this.heartbeatPaused) {
+                    this.startHeartbeat();
+                    this.heartbeatPaused = false;
+                }
                 this.handleConnectionFailure('Send command failed');
                 reject(error);
             }

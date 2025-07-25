@@ -16,8 +16,8 @@ bool webServerConnected = false;
 // WebSocket客户端管理
 std::map<uint8_t, bool> connectedClients;
 std::map<uint8_t, unsigned long> lastHeartbeat; // 记录每个客户端的最后心跳时间
-const unsigned long HEARTBEAT_INTERVAL = 5000;  // 心跳间隔5秒（快速响应）
-const unsigned long HEARTBEAT_TIMEOUT = 15000;  // 心跳超时15秒（快速检测）
+const unsigned long HEARTBEAT_INTERVAL = 10000; // 心跳间隔10秒（降低频率减少处理负担）
+const unsigned long HEARTBEAT_TIMEOUT = 70000;  // 心跳超时70秒（匹配客户端60秒+缓冲）
 const uint8_t MAX_CLIENTS = 5; // 最大连接数限制
 
 // 连接健康检查
@@ -572,7 +572,7 @@ void WebServerLoop()
     for (auto &pair : webTasks) {
       WebTask &task = pair.second;
       if (task.status == "running" && task.startTime > 0) {
-        if (currentTime - task.startTime > 30000) { // 30秒超时
+        if (currentTime - task.startTime > 150000) { // 150秒超时（比客户端120秒稍长）
           PTHL("web task timeout: ", task.taskId);
           task.status = "error";
           task.resultReady = true;

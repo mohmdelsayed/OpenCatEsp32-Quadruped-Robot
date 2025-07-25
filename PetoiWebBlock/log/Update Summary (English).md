@@ -20,6 +20,8 @@
 | 🔧 Advanced Features | **ESP32 Chip Recognition Simplification** | Simplified chip configuration list | `programblockly.html` | 1. Reduced from 11 specific configurations to 4 universal ones<br>2. CH340/CP2102 series only check vendor ID<br>3. Retain precise matching for ESP32-S2/S3<br>4. Auto-support new chip versions | Stronger compatibility, simpler maintenance, auto-support for new chips |
 | 🔗 Connection Management | **Serial Port Selection Flow Optimization** | Direct complete port selection list display | `programblockly.html`, `styles.css`, `lang/translations.js` | 1. Click "Connect Serial Port" to directly show complete selection list<br>2. Include authorized ports and "Select Other Port" option<br>3. Visual optimization with blue dashed border for other port option<br>4. Simplified from two-step operation to one-step | Operation simplified from two steps (check+click) to one step, more intuitive user experience |
 | 🔗 Connection Management | **Serial Port Validation Timeout Optimization** | Smart validation timeout adjustment based on OS | `programblockly.html` | 1. Detect operating system on connection<br>2. Windows: 4-second timeout (slower response)<br>3. Other systems: 200ms timeout (faster response)<br>4. Improved connection success rate | **Problem**: Same timeout for all systems, Windows slow response causes validation failure<br>**Solution**: Windows 4s, other systems 200ms, OS-specific optimization<br>**Improvement**: Higher connection success rate, optimized response speed |
+| 🎵 Music Control | **Music Playback Function Fix** | Fixed B command missing termination character | `blocks/generators.js` | 1. Detect when token is 'B' (music command)<br>2. Automatically append '~' character (ASCII 126) to parameters<br>3. Ensure proper command termination for Arduino<br>4. Restore music playback functionality | **Problem**: Music blocks not working, Arduino cannot detect command end<br>**Solution**: Auto-append required '~' termination character for B commands<br>**Improvement**: Music playback fully restored, play note and play melody blocks work normally |
+| 🛠️ Debug Tools | **Debug Log Generation Feature** | One-click comprehensive debug report generation | `programblockly.html`, `lang/translations.js` | 1. Click "Generate Log" button<br>2. Auto-collect JavaScript code from workspace<br>3. Gather Console Log and Serial Log content<br>4. Generate Markdown-formatted debug report<br>5. Auto-download as .md file and copy to clipboard | **Problem**: Users struggle to provide complete debug info, low tech support efficiency<br>**Solution**: One-click generation of comprehensive report with code, console, and serial logs<br>**Improvement**: Dramatically improves problem diagnosis efficiency, easier for users to provide detailed info to support |
 
 ## Technical Improvement Highlights
 
@@ -115,4 +117,17 @@
 - **Other Systems Optimization**: 200ms timeout for Mac/Linux systems (faster response)
 - **Connection Success Rate**: Resolves connection failures caused by different system response speeds
 
-These modifications comprehensively improve the stability, response speed, user experience, and internationalization support of WebServer and WebCodingBlocks, making the system more intelligent, user-friendly, and internationalized. Significant improvements have been made particularly in connection management, program control, data display, and advanced features. 
+### Music Playback Function Fix
+- **Root Cause**: B command (music playback) missing termination character '~', causing Arduino unable to detect command end
+- **Technical Fix**: Automatically append ASCII 126 ('~') as termination character for B commands in encodeCommand function
+- **Function Restoration**: Play note blocks and play melody blocks restored to normal operation
+- **User Experience**: Music playback functionality fully restored, no manual termination character required
+
+### Debug Log Generation Feature
+- **Feature Purpose**: Provide comprehensive debug information collection tool for technical support and problem diagnosis
+- **Core Functionality**: One-click collection of JavaScript code from workspace, Console Log output, and Serial Log content
+- **Output Format**: Auto-generate Markdown-formatted debug report with timestamps and complete categorized information
+- **Convenience Features**: Support auto-download as .md file and copy to clipboard for easy sharing and submission
+- **User Experience**: Dramatically simplifies problem reporting process, improves technical support efficiency
+
+These modifications comprehensively improve the stability, response speed, user experience, and internationalization support of WebServer and WebCodingBlocks, making the system more intelligent, user-friendly, and internationalized. Significant improvements have been made particularly in connection management, program control, data display, advanced features, music playback functionality, and debug tools. 

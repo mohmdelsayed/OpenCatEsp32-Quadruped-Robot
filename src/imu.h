@@ -608,7 +608,7 @@ void print6Axis() {
 }
 
 TaskHandle_t TASK_imu = NULL;
-bool imuTaskRunning = true;
+// bool imuTaskRunning = true;
 
 TaskHandle_t taskCalibrateImuUsingCore0_handle = NULL;  // -ee- Use to access taskCalibrateImuUsingCore0() running on Core 1 FROM Core 1
 
@@ -731,6 +731,7 @@ void taskIMU(void *parameter) {
     } else
       delay(1);  // to avoid the task to be blocked the wdt
   }
+  PTL("IMU task deleted");
   vTaskDelete(NULL);
 }
 
@@ -770,7 +771,7 @@ void imuSetup() {
   xTaskCreatePinnedToCore(taskIMU,  // task function
                           "TaskIMU",  // name
                           9000,  // task stack size​​: 8700 determined by uxTaskGetStackHighWaterMark()
-                          &imuTaskRunning,  // parameters
+                          &updateGyroQ,  // parameters
                           1,  // priority
                           &TASK_imu,  // handle
                           0);  // core

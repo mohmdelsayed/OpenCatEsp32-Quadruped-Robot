@@ -72,6 +72,8 @@ body {
     background-color: #0056b3;
 }
 
+/* Generate Log按钮保持与其他按钮一致的样式 */
+
 /* 连接成功状态下的Quick Connect按钮样式 */
 #quickConnectBtn[data-connected="true"] {
     background-color: #4CAF50 !important;

@@ -18,6 +18,7 @@ const TRANSLATIONS = {
     "skillLoadFailed": "技能加载失败",
     "serialNotConnected": "请先连接串口",
     "clearAll": "清除全部",
+    "generateLog": "生成日志",
 
     "clearLog": "清除日志",
     "consoleLog": "控制台日志",
@@ -466,6 +467,7 @@ const TRANSLATIONS = {
     "skillLoadFailed": "Failed to load skill",
     "serialNotConnected": "Please connect to serial port first",
     "clearAll": "Clear All",
+    "generateLog": "Generate Log",
 
     "clearLog": "Clear Log",
     "consoleLog": "Console Log",
@@ -913,6 +915,7 @@ const TRANSLATIONS = {
     "skillLoadFailed": "スキルロード失敗",
     "serialNotConnected": "シリアルポートに接続してください",
     "clearAll": "すべてクリア",
+    "generateLog": "ログを生成",
 
     "clearLog": "ログをクリア",
     "consoleLog": "コンソールログ",
