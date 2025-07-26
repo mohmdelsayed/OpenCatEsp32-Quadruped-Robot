@@ -13,10 +13,12 @@
   <!-- <script src="./node_modules/blockly/msg/en.js"></script> -->
   <!-- 3. 加载自定义翻译 -->
   <script src="./lang/translations.js"></script>
-  <!-- 4. 然后加载自定义积木块文件 -->
+  <!-- 4. 加载超时配置 -->
+  <script src="./js/timeout_config.js"></script>
+  <!-- 5. 然后加载自定义积木块文件 -->
   <script src="./blocks/communication.js"></script>
   <script src="./blocks/generators.js"></script>
-  <!-- 5. 加载 WebSocket 客户端 -->
+  <!-- 6. 加载 WebSocket 客户端 -->
   <script src="./js/petoi_async_client.js"></script>
   <script src="./js/toolbox.js"></script>
   <link rel="stylesheet" href="./styles.css">
@@ -2916,7 +2918,7 @@ Generated at: ${now.toISOString()}
       try
       {
         // 添加超时处理，防止硬件断开时卡住
-        const timeout = 3000; // 3秒超时
+        const timeout = TIMEOUT_CONFIG.SERIAL.PORT_CLOSE_TIMEOUT; // 使用配置的端口关闭超时
 
         if (reader)
         {
@@ -2925,7 +2927,7 @@ Generated at: ${now.toISOString()}
             // 使用Promise.race添加超时
             await Promise.race([
               reader.cancel(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Reader cancel timeout')), timeout))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Reader cancel timeout')), TIMEOUT_CONFIG.SERIAL.READER_CANCEL_TIMEOUT))
             ]);
             console.log('Reader cancelled successfully');
           } catch (readerError)
@@ -2944,7 +2946,7 @@ Generated at: ${now.toISOString()}
             // 使用Promise.race添加超时
             await Promise.race([
               writer.close(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Writer close timeout')), timeout))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Writer close timeout')), TIMEOUT_CONFIG.SERIAL.WRITER_CLOSE_TIMEOUT))
             ]);
             console.log('Writer closed successfully');
           } catch (writerError)
@@ -2963,7 +2965,7 @@ Generated at: ${now.toISOString()}
             // 使用Promise.race添加超时
             await Promise.race([
               port.close(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Port close timeout')), timeout))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Port close timeout')), TIMEOUT_CONFIG.SERIAL.PORT_CLOSE_TIMEOUT))
             ]);
             console.log('Port closed successfully');
           } catch (portError)
@@ -3481,7 +3483,7 @@ Generated at: ${now.toISOString()}
 
         // 根据操作系统设置等待时间
         const os = OPERATING_SYSTEM;
-        const waitTime = (os === 'windows') ? 4000 : 200; // Windows: 4s, 其他: 200ms
+        const waitTime = (os === 'windows') ? TIMEOUT_CONFIG.UI.VALIDATION_TIMEOUT_WINDOWS : TIMEOUT_CONFIG.UI.VALIDATION_TIMEOUT_OTHER; // 使用配置的验证超时时间
 
         const startTime = Date.now();
         let response = '';
@@ -3626,7 +3628,7 @@ Generated at: ${now.toISOString()}
                 processDetectedIP(lastPartialIP);
                 ipCheckTimer = null;
                 lastPartialIP = null;
-              }, 100);
+              }, TIMEOUT_CONFIG.UI.IP_CHECK_DELAY);
               break; // 找到IP地址后跳出循环
             }
           }
@@ -3649,7 +3651,7 @@ Generated at: ${now.toISOString()}
             serialOutputTimer = setTimeout(() =>
             {
               processSerialOutputBuffer();
-            }, 30);
+            }, TIMEOUT_CONFIG.UI.SERIAL_OUTPUT_BUFFER_DELAY);
           }
         }
       } catch (error)

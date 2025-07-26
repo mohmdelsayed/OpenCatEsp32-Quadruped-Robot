@@ -9,17 +9,17 @@ class PetoiAsyncClient
     constructor(baseUrl = null)
     {
         this.baseUrl = baseUrl || `ws://${window.location.hostname}:81`;
-        this.taskTimeout = 60000; // 60秒默认超时（增加超时时间以适应复杂动作）
+        this.taskTimeout = TIMEOUT_CONFIG.COMMAND.DEFAULT_TIMEOUT; // 使用配置的默认超时
         this.ws = null;
         this.connected = false;
         this.pendingTasks = new Map();
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectDelay = 500; // 减少初始重连延迟
+        this.maxReconnectAttempts = TIMEOUT_CONFIG.WEBSOCKET.MAX_RECONNECT_ATTEMPTS;
+        this.reconnectDelay = TIMEOUT_CONFIG.WEBSOCKET.RECONNECT_DELAY; // 使用配置的重连延迟
         this.heartbeatInterval = null;
         this.heartbeatTimeout = null;
-        this.heartbeatIntervalMs = 5000;  // 5秒发送一次心跳（降低频率减少干扰）
-        this.heartbeatTimeoutMs = 60000;  // 60秒没有响应就重连（大幅增加超时时间）
+        this.heartbeatIntervalMs = TIMEOUT_CONFIG.WEBSOCKET.HEARTBEAT_INTERVAL;  // 使用配置的心跳间隔
+        this.heartbeatTimeoutMs = TIMEOUT_CONFIG.WEBSOCKET.HEARTBEAT_TIMEOUT;  // 使用配置的心跳超时
         this.lastHeartbeatTime = 0;       // 记录最后一次心跳时间
         this.heartbeatPaused = false;     // 跟踪心跳是否被暂停
         this.eventTarget = new EventTarget();
@@ -27,9 +27,9 @@ class PetoiAsyncClient
         
         // 连接健康检查
         this.healthCheckInterval = null;
-        this.healthCheckIntervalMs = 10000; // 10秒检查一次连接健康状态（减少频繁检查）
+        this.healthCheckIntervalMs = TIMEOUT_CONFIG.WEBSOCKET.HEALTH_CHECK_INTERVAL; // 使用配置的健康检查间隔
         this.autoReconnect = true; // 自动重连开关
-        this.connectionTimeout = 10000; // 连接超时10秒（快速连接）
+        this.connectionTimeout = TIMEOUT_CONFIG.WEBSOCKET.CONNECTION_TIMEOUT; // 使用配置的连接超时
         
         // 连接状态监控
         this.lastActivityTime = 0; // 最后活动时间
@@ -462,13 +462,13 @@ class PetoiAsyncClient
         );
         
         if (isSensorCommand) {
-            return 5000; // 传感器读取：5秒超时
+            return TIMEOUT_CONFIG.COMMAND.SENSOR_READ_TIMEOUT; // 传感器读取超时
         } else if (isMusicCommand) {
-            return 120000; // 音乐播放：2分钟超时（120秒）
+            return TIMEOUT_CONFIG.COMMAND.MUSIC_COMMAND_TIMEOUT; // 音乐播放超时
         } else if (isComplexAction) {
-            return 45000; // 复杂动作：45秒超时（增加以适应clap等长时间动作）
+            return TIMEOUT_CONFIG.COMMAND.COMPLEX_ACTION_TIMEOUT; // 复杂动作超时
         } else {
-            return 20000; // 普通命令：20秒超时（略微增加）
+            return TIMEOUT_CONFIG.COMMAND.SIMPLE_COMMAND_TIMEOUT; // 普通命令超时
         }
     }
 

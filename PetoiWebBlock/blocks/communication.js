@@ -27,7 +27,7 @@ function getDeviceModel()
 }
 
 // 连接机器人函数实现 - WebSocket版本
-async function makeConnection(ip, timeout = 2000) {
+async function makeConnection(ip, timeout = TIMEOUT_CONFIG.WEB_REQUEST.CONNECTION_TIMEOUT) {
   try {
     if (window.client) {
       // 如果已经有连接，先断开
@@ -93,7 +93,7 @@ async function closeConnection() {
 // 全局异步客户端类定义
 // PetoiAsyncClient 类已移动到 petoi_async_client.js 文件中
 
-function webRequest(command, timeout = 30000, needResponse = true, displayCommand = null, bypassStopCheck = false) {
+function webRequest(command, timeout = TIMEOUT_CONFIG.WEB_REQUEST.DEFAULT_TIMEOUT, needResponse = true, displayCommand = null, bypassStopCheck = false) {
   return new Promise(async (resolve, reject) =>
     {
       try
@@ -143,7 +143,7 @@ function webRequest(command, timeout = 30000, needResponse = true, displayComman
     });
 }
 
-function webBatchRequest(commands, timeout = 30000, needResponse = true)
+function webBatchRequest(commands, timeout = TIMEOUT_CONFIG.WEB_REQUEST.BATCH_REQUEST_TIMEOUT, needResponse = true)
 {
   return new Promise(async (resolve, reject) => {
     try

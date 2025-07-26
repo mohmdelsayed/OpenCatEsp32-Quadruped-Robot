@@ -13,10 +13,11 @@ await (async function() {
 
 // 代码生成:发送步态动作命令
 
-const COMMAND_TIMEOUT_MAX = 60 * 1000; // 60 seconds for most commands
-const LONG_COMMAND_TIMEOUT = 5 * 60 * 1000; // 5 minutes for complex movements
-const ACROBATIC_MOVES_TIMEOUT = 30 * 1000; // 30 seconds for acrobatic moves
-const JOINT_QUERY_TIMEOUT = 10 * 1000; // 10 seconds for joint state queries
+// 使用统一的超时配置
+const COMMAND_TIMEOUT_MAX = TIMEOUT_CONFIG.COMMAND.DEFAULT_TIMEOUT; // 默认命令超时
+const LONG_COMMAND_TIMEOUT = TIMEOUT_CONFIG.COMMAND.LONG_COMMAND_TIMEOUT; // 长时间命令超时
+const ACROBATIC_MOVES_TIMEOUT = TIMEOUT_CONFIG.COMMAND.ACROBATIC_MOVES_TIMEOUT; // 杂技动作超时
+const JOINT_QUERY_TIMEOUT = TIMEOUT_CONFIG.COMMAND.JOINT_QUERY_TIMEOUT; // 关节查询超时
 
 Blockly.JavaScript.forBlock["gait"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");

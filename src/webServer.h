@@ -6,6 +6,12 @@
 #include <map>
 #include <ArduinoJson.h>
 
+// 网页服务器超时配置 (毫秒)
+#define HEARTBEAT_TIMEOUT 25000         // 心跳超时：25秒（匹配客户端20秒+缓冲）
+#define HEALTH_CHECK_INTERVAL 10000     // 健康检查间隔：10秒
+#define WEB_TASK_EXECUTION_TIMEOUT 30000 // 任务执行超时：30秒
+#define MAX_CLIENTS 5                   // 最大连接数限制
+
 // WiFi配置
 String ssid = "";
 String password = "";
@@ -16,13 +22,9 @@ bool webServerConnected = false;
 // WebSocket客户端管理
 std::map<uint8_t, bool> connectedClients;
 std::map<uint8_t, unsigned long> lastHeartbeat; // 记录每个客户端的最后心跳时间
-const unsigned long HEARTBEAT_INTERVAL = 10000; // 心跳间隔10秒（降低频率减少处理负担）
-const unsigned long HEARTBEAT_TIMEOUT = 70000;  // 心跳超时70秒（匹配客户端60秒+缓冲）
-const uint8_t MAX_CLIENTS = 5; // 最大连接数限制
 
 // 连接健康检查
 unsigned long lastHealthCheckTime = 0;
-const unsigned long HEALTH_CHECK_INTERVAL = 10000; // 健康检查间隔10秒（快速检测）
 
 // 异步任务管理
 struct WebTask
@@ -572,7 +574,7 @@ void WebServerLoop()
     for (auto &pair : webTasks) {
       WebTask &task = pair.second;
       if (task.status == "running" && task.startTime > 0) {
-        if (currentTime - task.startTime > 150000) { // 150秒超时（比客户端120秒稍长）
+        if (currentTime - task.startTime > WEB_TASK_EXECUTION_TIMEOUT) { // 使用配置的任务执行超时
           PTHL("web task timeout: ", task.taskId);
           task.status = "error";
           task.resultReady = true;
