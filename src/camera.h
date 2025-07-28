@@ -159,6 +159,19 @@ bool cameraSetup() {
   if (!MuQ && !GroveVisionQ && !Sentry2Q) {
     return false;
   }
+
+  // Acquire camera I2C lock and wait for other I2C operations to complete
+#ifndef USE_WIRE1
+  cameraLockI2c = true;  // Signal that camera wants to use I2C bus
+  while (
+#ifdef GYRO_PIN
+      imuLockI2c ||  // wait for the imu to release lock
+#endif
+      gestureLockI2c ||  // wait for the gesture to release lock
+      eepromLockI2c)     // wait for the EEPROM operations to complete
+    delay(1);
+#endif
+
 #ifdef NYBBLE
   initPars = nybblePars;
   sizePars = sizeof(nybblePars) / sizeof(int8_t);
@@ -213,6 +226,12 @@ bool cameraSetup() {
 #endif
   fps = 0;
   loopTimer = millis();
+
+  // Release camera I2C lock
+#ifndef USE_WIRE1
+  cameraLockI2c = false;
+#endif
+
   return cameraSetupSuccessful;
 }
 
@@ -651,7 +670,6 @@ enum OptResolution : uint8_t {
 void groveVisionSetup() {
   PTLF("Setup Grove Vision AI Module");
   // CAMERA_WIRE.begin(10, 9, 400000);
-  AI.begin(&CAMERA_WIRE);
 
   // End the TASK_imu task when activating Grove Vision AI V2
 #ifdef GYRO_PIN
@@ -667,6 +685,7 @@ void groveVisionSetup() {
     PTLF("Terminated TASK_imu task gracefully");
   }
 #endif
+  AI.begin(&CAMERA_WIRE);
 
   uint8_t count = 0;
   bool sensorEnable = true;
