@@ -6,11 +6,47 @@
 #include <map>
 #include <ArduinoJson.h>
 
+// 网页服务器调试级别控制
+#define WEB_DEBUG_LEVEL 1               // 0=关闭, 1=错误, 2=警告, 3=信息, 4=详细
+
+// 调试打印宏 - 根据级别控制
+#if WEB_DEBUG_LEVEL >= 1
+  #define WEB_ERROR(msg, value) PTHL(msg, value)
+  #define WEB_ERROR_F(msg) PTLF(msg)
+#else
+  #define WEB_ERROR(msg, value)
+  #define WEB_ERROR_F(msg)
+#endif
+
+#if WEB_DEBUG_LEVEL >= 2
+  #define WEB_WARN(msg, value) PTHL(msg, value)
+  #define WEB_WARN_F(msg) PTLF(msg)
+#else
+  #define WEB_WARN(msg, value)
+  #define WEB_WARN_F(msg)
+#endif
+
+#if WEB_DEBUG_LEVEL >= 3
+  #define WEB_INFO(msg, value) PTHL(msg, value)
+  #define WEB_INFO_F(msg) PTLF(msg)
+#else
+  #define WEB_INFO(msg, value)
+  #define WEB_INFO_F(msg)
+#endif
+
+#if WEB_DEBUG_LEVEL >= 4
+  #define WEB_DEBUG(msg, value) PTHL(msg, value)
+  #define WEB_DEBUG_F(msg) PTLF(msg)
+#else
+  #define WEB_DEBUG(msg, value)
+  #define WEB_DEBUG_F(msg)
+#endif
+
 // 网页服务器超时配置 (毫秒)
 #define HEARTBEAT_TIMEOUT 25000         // 心跳超时：25秒（匹配客户端20秒+缓冲）
 #define HEALTH_CHECK_INTERVAL 10000     // 健康检查间隔：10秒
 #define WEB_TASK_EXECUTION_TIMEOUT 30000 // 任务执行超时：30秒
-#define MAX_CLIENTS 5                   // 最大连接数限制
+#define MAX_CLIENTS 2                   // 最大连接数限制
 
 // WiFi配置
 String ssid = "";
@@ -112,7 +148,7 @@ void checkConnectionHealth() {
     unsigned long lastHeartbeatTime = it->second;
     
     if (currentTime - lastHeartbeatTime > HEARTBEAT_TIMEOUT) {
-      PTHL("Client heartbeat timeout, disconnecting: ", clientId);
+      WEB_ERROR("Client heartbeat timeout, disconnecting: ", clientId);
       
       // 发送超时通知
       sendSocketResponse(clientId, "{\"type\":\"error\",\"error\":\"Heartbeat timeout\"}");
@@ -187,7 +223,7 @@ void sendUltrasonicData(int distance) {
 void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   switch(type) {
     case WStype_DISCONNECTED:
-      PTHL("WebSocket client disconnected: ", num);
+      WEB_ERROR("WebSocket client disconnected: ", num);
       
       // 清理客户端状态
       connectedClients.erase(num);
@@ -204,7 +240,7 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
     case WStype_CONNECTED:
       // 检查连接数限制
       if (connectedClients.size() >= MAX_CLIENTS) {
-        PTHL("Max clients reached, rejecting: ", num);
+        WEB_ERROR("Max clients reached, rejecting: ", num);
         sendSocketResponse(num, "{\"type\":\"error\",\"error\":\"Max clients reached\"}");
         webSocket.disconnect(num);
         return;
@@ -212,7 +248,7 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
       
       connectedClients[num] = true;
       lastHeartbeat[num] = millis();
-      PTHL("WebSocket client connected: ", num);
+              WEB_DEBUG("WebSocket client connected: ", num);
       
       // 发送连接成功响应
       sendSocketResponse(num, "{\"type\":\"connected\",\"clientId\":\"" + String(num) + "\"}");
@@ -232,7 +268,7 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
       }
 
       String msgType = doc["type"].as<String>();
-      PTHL("msg type: ", msgType);
+              WEB_DEBUG("msg type: ", msgType);
       
       // 处理心跳消息
       if (doc["type"] == "heartbeat") {
@@ -268,11 +304,13 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
         }
         
         // 调试信息
-        PTHL("Received command task: ", taskId);
-        PTHL("Command count: ", task.commandGroup.size());
-        for (size_t i = 0; i < task.commandGroup.size(); i++) {
-          PTHL("Command " + String(i) + ": ", task.commandGroup[i]);
-        }
+                  WEB_DEBUG("Received command task: ", taskId);
+          WEB_DEBUG("Command count: ", task.commandGroup.size());
+                  #if WEB_DEBUG_LEVEL >= 4
+          for (size_t i = 0; i < task.commandGroup.size(); i++) {
+            WEB_DEBUG("Command " + String(i) + ": ", task.commandGroup[i]);
+          }
+          #endif
         
         // 如果当前没有活跃的web任务，立即开始执行
         if (!webTaskActive) {
@@ -288,8 +326,8 @@ void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
         // 发送任务开始响应
         sendSocketResponse(num, "{\"type\":\"response\",\"taskId\":\"" + taskId + "\",\"status\":\"running\"}");
         
-        PTHL("web command group async: ", taskId);
-        PTHL("command count: ", task.commandGroup.size());
+        WEB_DEBUG("web command group async: ", taskId);
+        WEB_DEBUG("command count: ", task.commandGroup.size());
       }
       break;
     }
@@ -315,7 +353,7 @@ void startWebTask(String taskId)
     if (task.currentCommandIndex < task.commandGroup.size()) {
       String webCmd = task.commandGroup[task.currentCommandIndex];
       
-      PTHL("Processing command: ", webCmd);
+              WEB_DEBUG("Processing command: ", webCmd);
       
       // 检查是否是base64编码的命令
       if (webCmd.startsWith("b64:")) {
@@ -334,14 +372,10 @@ void startWebTask(String taskId)
           } else {
             newCmd[cmdLen] = '\0';
           }
-          PTHL("base64 decode token: ", token);
-          PTHL("base64 decode args count: ", cmdLen);
-          int8_t argStart = newCmd[0];
-          int8_t argEnd = newCmd[cmdLen - 1];
-          printf("base64 decode arg start: %d\n",argStart);
-          printf("base64 decode arg end: %d\n", argEnd);
+                      WEB_DEBUG("base64 decode token: ", token);
+            WEB_DEBUG("base64 decode args count: ", cmdLen);
         } else {
-          PTHL("base64 decode failed: ", task.currentCommandIndex);
+          WEB_ERROR("base64 decode failed: ", task.currentCommandIndex);
           // base64 解码失败，跳过这个命令
           task.currentCommandIndex++;
           startWebTask(taskId);
@@ -354,9 +388,9 @@ void startWebTask(String taskId)
         cmdLen = strlen(newCmd);
         newCmd[cmdLen + 1] = '\0';
         
-        PTHL("Parsed token: ", token);
-        PTHL("Parsed command: ", newCmd);
-        PTHL("Command length: ", cmdLen);
+                  WEB_DEBUG("Parsed token: ", token);
+          WEB_DEBUG("Parsed command: ", newCmd);
+          WEB_DEBUG("Command length: ", cmdLen);
       }
       newCmdIdx = 4;
 
@@ -373,10 +407,10 @@ void startWebTask(String taskId)
     serializeJson(statusDoc, statusMsg);
     webSocket.sendTXT(task.clientId, statusMsg);
 
-    PTHL("executing command group task: ", taskId);
-    PTHL("sub command Index: ", task.currentCommandIndex);
-    PTHL("sub command: ", webCmd);
-    PTHL("total commands: ", task.commandGroup.size());
+    WEB_DEBUG("executing command group task: ", taskId);
+    WEB_DEBUG("sub command Index: ", task.currentCommandIndex);
+    WEB_DEBUG("sub command: ", webCmd);
+    WEB_DEBUG("total commands: ", task.commandGroup.size());
   } else {
     // 所有命令执行完成
     completeWebTask();
@@ -407,8 +441,8 @@ void completeWebTask()
     task.endTime = millis();
     task.resultReady = true;
 
-    PTHL("web task completed: ", currentWebTaskId);
-    PTHL("results length: ", task.results.size());
+    WEB_DEBUG("web task completed: ", currentWebTaskId);
+    WEB_DEBUG("results length: ", task.results.size());
 
     // 发送完成状态给客户端
     JsonDocument completeDoc;
@@ -422,7 +456,7 @@ void completeWebTask()
     String statusMsg;
     serializeJson(completeDoc, statusMsg);
     sendSocketResponse(task.clientId, statusMsg);
-    PTHL("web task response: ", statusMsg);
+    WEB_DEBUG("web task response: ", statusMsg);
     clearWebTask(currentWebTaskId);
   }
 
@@ -472,7 +506,7 @@ void clearWebTask(String taskId)
 {
   if (webTasks.find(taskId) != webTasks.end()) {
     WebTask &task = webTasks[taskId];
-    PTHL("clear web task: ", taskId);
+    WEB_DEBUG("clear web task: ", taskId);
     task.commandGroup.clear();
     task.results.clear();
     webTasks.erase(taskId);
@@ -498,10 +532,14 @@ bool connectWifi(String ssid, String password)
   int timeout = 0;
   while (WiFi.status() != WL_CONNECTED && timeout < 100) {
     delay(100);
+    #if WEB_DEBUG_LEVEL >= 3
     PT('.');
+    #endif
     timeout++;
   }
+  #if WEB_DEBUG_LEVEL >= 3
   PTL();
+  #endif
   if (WiFi.status() == WL_CONNECTED) {
     return true;
   } else {
@@ -520,7 +558,7 @@ void startWifiManager() {
   WiFiManager wm;
   wm.setConfigPortalTimeout(60);
   if (!wm.autoConnect((uniqueName + " WifiConfig").c_str())) {
-    PTLF("Fail to connect Wifi. Rebooting.");
+    WEB_ERROR_F("Fail to connect Wifi. Rebooting.");
     delay(3000);
     ESP.restart();
   } else {
@@ -532,9 +570,9 @@ void startWifiManager() {
     // 启动WebSocket服务器
     webSocket.begin();
     webSocket.onEvent(handleWebSocketEvent);
-    PTLF("WebSocket server started");
+    WEB_INFO_F("WebSocket server started");
   } else {
-    PTLF("Timeout: Fail to connect web server!");
+    WEB_ERROR_F("Timeout: Fail to connect web server!");
   }
 
 #ifdef I2C_EEPROM_ADDRESS
@@ -549,9 +587,9 @@ void resetWifiManager() {
   esp_wifi_init(&cfg);
   delay(2000);
   if (esp_wifi_restore() != ESP_OK) {
-    PTLF("\nWiFi is not initialized by esp_wifi_init ");
+    WEB_ERROR_F("\nWiFi is not initialized by esp_wifi_init ");
   } else {
-    PTLF("\nWiFi Configurations Cleared!");
+    WEB_INFO_F("\nWiFi Configurations Cleared!");
   }
   delay(2000);
   ESP.restart();
@@ -575,7 +613,7 @@ void WebServerLoop()
       WebTask &task = pair.second;
       if (task.status == "running" && task.startTime > 0) {
         if (currentTime - task.startTime > WEB_TASK_EXECUTION_TIMEOUT) { // 使用配置的任务执行超时
-          PTHL("web task timeout: ", task.taskId);
+          WEB_ERROR("web task timeout: ", task.taskId);
           task.status = "error";
           task.resultReady = true;
 

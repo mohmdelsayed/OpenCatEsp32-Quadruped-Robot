@@ -515,6 +515,12 @@ class PetoiAsyncClient
             this.heartbeatPaused = true;
         }
 
+        // 检查是否包含陀螺仪禁用命令
+        const hasGyroDisableCommand = commands.some(cmd => {
+            const cmdLower = cmd.toLowerCase();
+            return cmdLower.includes('gu') || cmdLower.includes('gb') || cmdLower.includes('gf');
+        });
+
         return new Promise((resolve, reject) => {
             const taskId = Date.now().toString();
             const message = {
@@ -545,10 +551,19 @@ class PetoiAsyncClient
             }, 100);
 
             this.pendingTasks.set(taskId, {
-                resolve: (result) => {
+                resolve: async (result) => {
                     clearTimeout(timeoutId);
                     clearInterval(stopCheckInterval);
                     this.pendingTasks.delete(taskId);
+                    
+                    // 如果执行了陀螺仪禁用命令，等待100ms让主机端关闭gyro任务
+                    if (hasGyroDisableCommand) {
+                        if (typeof showDebug !== 'undefined' && showDebug) {
+                            console.log('Gyroscope disable command detected, waiting 100ms for task shutdown...');
+                        }
+                        await this.delay(100);
+                    }
+                    
                     // 恢复心跳检测
                     if (this.heartbeatPaused) {
                         this.startHeartbeat();

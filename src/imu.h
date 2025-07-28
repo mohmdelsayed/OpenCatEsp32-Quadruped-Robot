@@ -731,7 +731,7 @@ void taskIMU(void *parameter) {
     } else
       delay(1);  // to avoid the task to be blocked the wdt
   }
-  PTL("IMU task deleted");
+  PTLF("IMU task terminated for web coding");
   vTaskDelete(NULL);
 }
 
