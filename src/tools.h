@@ -194,6 +194,7 @@ void printCmd() {
 void resetCmd() {
   // PTL("Reset Cmd");
   // printCmd();
+  
   lastToken = token;
   newCmdIdx = 0;
   if (token != T_SKILL && token != T_SKILL_DATA && token != T_SERVO_CALIBRATE && token != T_SERVO_FEEDBACK && token != T_SERVO_FOLLOW && token != T_CPG && token != T_CPG_BIN)

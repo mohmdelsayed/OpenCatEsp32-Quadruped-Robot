@@ -566,9 +566,9 @@ void print6Axis() {
   if (icmQ) {
 #ifdef PRINT_ACCELERATION
     sprintf(buffer, "ICM:%6.1f%6.1f%6.1f%7.1f%7.1f%7.1f\t",  //
-            icm.a_real[0], icm.a_real[1], icm.a_real[2], icm.ypr[0], icm.ypr[1], icm.ypr[2]);
+            icm.a_real[0], icm.a_real[1], icm.a_real[2], -icm.ypr[0], icm.ypr[1], icm.ypr[2]);
 #else
-    sprintf(buffer, "ICM%7.1f%7.1f%7.1f\t", icm.ypr[0], icm.ypr[1], icm.ypr[2]);
+    sprintf(buffer, "ICM%7.1f%7.1f%7.1f\t", -icm.ypr[0], icm.ypr[1], icm.ypr[2]);
 #endif
     printToAllPorts(buffer, 0);
   }
@@ -577,9 +577,9 @@ void print6Axis() {
   if (mpuQ) {
 #ifdef PRINT_ACCELERATION
     sprintf(buffer, "MCU:%6.1f%6.1f%6.1f%7.1f%7.1f%7.1f",  // 7x6 = 42
-            mpu.a_real[0], mpu.a_real[1], mpu.a_real[2], mpu.ypr[0], mpu.ypr[1], mpu.ypr[2]);  //, aaWorld.z);
+            mpu.a_real[0], mpu.a_real[1], mpu.a_real[2], -mpu.ypr[0], mpu.ypr[1], mpu.ypr[2]);  //, aaWorld.z);
 #else
-    sprintf(buffer, "MCU%7.1f%7.1f%7.1f", mpu.ypr[0], mpu.ypr[1], mpu.ypr[2]);
+    sprintf(buffer, "MCU%7.1f%7.1f%7.1f", -mpu.ypr[0], mpu.ypr[1], mpu.ypr[2]);
 #endif
     printToAllPorts(buffer, 0);
   }
@@ -640,6 +640,8 @@ bool readIMU() {
         xyzReal[i] = icm.a_real[i];
         ypr[i] = icm.ypr[i];
       }
+      // Negate yaw to match polar coordinate convention (positive = counterclockwise)
+      ypr[0] = -ypr[0];
     }
 #endif
 #ifdef IMU_MPU6050
@@ -651,6 +653,8 @@ bool readIMU() {
         xyzReal[i] = mpu.a_real[i];
         ypr[i] = mpu.ypr[i];
       }
+      // Negate yaw to match polar coordinate convention (positive = counterclockwise)
+      ypr[0] = -ypr[0];
     }
 #endif
     imuLockI2c = false;
@@ -709,7 +713,31 @@ void getImuException() {
   // else if (  //keepDirectionQ &&
   //   fabs(previous_ypr[0] - ypr[0]) > 15 && fabs(fabs(ypr[0] - previous_ypr[0]) - 360) > 15)
   //   imuException = IMU_EXCEPTION_OFFDIRECTION;
-  else
+  else if (turningQ) {
+    // Check if we've reached the target turning angle
+    // ypr[0] is already negated to match polar coordinate convention
+    float currentYawDiff = ypr[0] - initialYawAngle;
+    
+    // Normalize the difference to -180 to 180 range
+    while (currentYawDiff > 180) currentYawDiff -= 360;
+    while (currentYawDiff < -180) currentYawDiff += 360;
+    
+    float targetDiff = targetYawAngle - initialYawAngle;
+    while (targetDiff > 180) targetDiff -= 360;
+    while (targetDiff < -180) targetDiff += 360;
+    
+    // Check if we've reached or exceeded the target angle
+    if ((targetDiff > 0 && currentYawDiff >= targetDiff) || 
+        (targetDiff < 0 && currentYawDiff <= targetDiff)) {
+      imuException = IMU_EXCEPTION_TURNING;
+      turningQ = false;  // Stop turning control
+      needTurning = true;  // Set flag to prevent exception from being skipped
+      PTH("Turning target reached! Current yaw: ", ypr[0]);
+      PTHL(" Target was: ", targetYawAngle);
+    } else {
+      imuException = 0;
+    }
+  } else if (!needTurning)  // Only reset exception if not waiting for turning processing
     imuException = 0;
   for (byte m = 0; m < 3; m++) {
     previousXYZ[m] = xyzReal[m];
