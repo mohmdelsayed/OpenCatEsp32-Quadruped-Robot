@@ -5,6 +5,13 @@
 bool calibrateQ = false;
 float ypr[3];
 float previous_ypr[3];
+
+// Turning control variables
+bool turningQ = false;           // Turning control switch
+float targetYawAngle = 0.0;     // Target angle to reach
+float initialYawAngle = 0.0;    // Initial angle when turning started
+bool needTurning = false;        // Flag to prevent turning exception from being skipped
+
 #define IMU_SKIP 1
 #define IMU_SKIP_MORE 23  // use prime number to avoid repeatly skipping the same joint
 #define ARX xyzReal[0]
@@ -713,7 +720,7 @@ void getImuException() {
   // else if (  //keepDirectionQ &&
   //   fabs(previous_ypr[0] - ypr[0]) > 15 && fabs(fabs(ypr[0] - previous_ypr[0]) - 360) > 15)
   //   imuException = IMU_EXCEPTION_OFFDIRECTION;
-  else if (turningQ) {
+  else if (turningQ) { // ** it's better to move this logic to taskQueue.h, make timing and turning parallel contidions
     // Check if we've reached the target turning angle
     // ypr[0] is already negated to match polar coordinate convention
     float currentYawDiff = ypr[0] - initialYawAngle;

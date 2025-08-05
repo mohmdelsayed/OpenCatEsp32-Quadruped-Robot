@@ -44,10 +44,11 @@ The system uses polar coordinate convention where:
 ### 2. Turning Control Variables
 
 ```cpp
-// In src/OpenCat.h
+// In src/imu.h
 bool turningQ = false;           // Turning control switch
 float targetYawAngle = 0.0;     // Target angle to reach
 float initialYawAngle = 0.0;    // Initial angle when turning started
+bool needTurning = false;        // Flag to prevent turning exception from being skipped
 ```
 
 ### 3. Enhanced T_SKILL Command Processing

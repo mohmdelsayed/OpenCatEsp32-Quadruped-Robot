@@ -77,7 +77,7 @@
 #define BOARD "B"
 #endif
 
-#define DATE "250081"  // YYMMDD
+#define DATE "250801"  // YYMMDD
 String SoftwareVersion = "";
 String uniqueName = "";
 
@@ -477,11 +477,7 @@ int8_t prev_imuException = 0;
 byte transformSpeed = 2;
 float protectiveShift;  // reduce the wearing of the potentiometer
 
-// Turning control variables
-bool turningQ = false;
-float targetYawAngle = 0.0;
-float initialYawAngle = 0.0;
-bool needTurning = false;  // Flag to prevent turning exception from being skipped
+
 
 int8_t moduleList[] = {
     EXTENSION_GROVE_SERIAL,
@@ -738,11 +734,7 @@ void initRobot() {
                             // allCalibratedPWM(currentAng); alone will lead to crash
   delay(500);
   
-  // Initialize turning control variables
-  turningQ = false;
-  targetYawAngle = 0.0;
-  initialYawAngle = 0.0;
-  needTurning = false;
+
 
   initModuleManager();
 #ifdef GYRO_PIN

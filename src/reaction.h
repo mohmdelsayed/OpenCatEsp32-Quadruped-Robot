@@ -11,13 +11,24 @@ void finishWebCommand();
 void dealWithExceptions() {
 #ifdef GYRO_PIN
 
+  // Handle turning exception regardless of gyroBalanceQ status
+  if (imuException == IMU_EXCEPTION_TURNING) {
+    PTL("EXCEPTION: turning target reached");
+    // Stop the robot and make it stand up
+    tQueue->addTask('k', "up");
+    needTurning = false;  // Reset flag after creating task
+    PTL("endTurn");
+    prev_imuException = imuException;
+    print6Axis();
+  }
   
+  // Handle other IMU exceptions only when gyroBalanceQ is true
   if (gyroBalanceQ) {
     // if (imuException == IMU_EXCEPTION_FLIPPED || (skill->period == 1 && fabs(xyzReal[2]) >= 15) || (skill->period > 1
     // && abs(xyzReal[2]) >= 20)) {
     //   delay(50);
     // }
-    if (imuException) {  // the gyro reaction switch can be toggled on/off by the 'g' token
+    if (imuException && imuException != IMU_EXCEPTION_TURNING) {  // the gyro reaction switch can be toggled on/off by the 'g' token
       switch (imuException) {
         case IMU_EXCEPTION_LIFTED:
           {
@@ -149,15 +160,6 @@ void dealWithExceptions() {
               //   }
               // }
             }
-            break;
-          }
-        case IMU_EXCEPTION_TURNING:
-          {
-            PTL("EXCEPTION: turning target reached");
-            // Stop the robot and make it stand up
-            tQueue->addTask('k', "up");
-            needTurning = false;  // Reset flag after creating task
-            PTL("endTurn");
             break;
           }
         default:
