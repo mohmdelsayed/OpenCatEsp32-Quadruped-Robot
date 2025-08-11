@@ -20,6 +20,18 @@ body {
     color: #333;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.version-date {
+    font-size: 14px;
+    color: #666;
+    font-weight: normal;
+}
+
 .language-switch {
     display: flex;
     gap: 10px;
@@ -1046,4 +1058,223 @@ body {
     border-color: #0056b3 !important;
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+/* 控制台输入相关样式 */
+.console-input-container {
+    display: flex !important;
+    align-items: center !important;
+    margin: 10px 0 !important;
+    padding: 10px !important;
+    background-color: #2d3748 !important;
+    border-radius: 4px !important;
+    border: 1px solid #4a5568 !important;
+    animation: fadeIn 0.3s ease-in-out !important;
+    min-width: 420px !important;
+    /* 设置合理的最小宽度：提示文本(约120px) + 输入框(200px) + 按钮(80px) + 间距和padding */
+    max-width: 100% !important;
+    /* 允许容器适应父容器宽度 */
+    flex-shrink: 0 !important;
+    /* 防止容器被压缩 */
+    box-sizing: border-box !important;
+    /* 确保padding和border包含在宽度内 */
+    overflow: visible !important;
+    /* 确保内容不被裁剪 */
+    position: relative !important;
+    /* 确保定位正确 */
+    z-index: 5 !important;
+    /* 确保容器在适当的层级 */
+}
+
+.console-input-field {
+    flex: 1 !important;
+    /* 使用!important确保优先级 */
+    background-color: #1a202c !important;
+    border: 1px solid #4a5568 !important;
+    color: #e2e8f0 !important;
+    padding: 8px 12px !important;
+    border-radius: 4px !important;
+    font-family: 'Consolas', monospace !important;
+    font-size: 14px !important;
+    outline: none !important;
+    transition: border-color 0.2s ease !important;
+    min-width: 200px !important;
+    /* 恢复输入框合理的最小宽度 */
+    max-width: none !important;
+    /* 允许输入框根据需要扩展 */
+    flex-shrink: 0 !important;
+    /* 防止输入框被过度压缩 */
+    box-sizing: border-box !important;
+    /* 确保padding和border包含在宽度内 */
+    width: 100% !important;
+    /* 确保输入框能够填充可用空间 */
+    position: relative !important;
+    /* 确保定位正确 */
+    z-index: 10 !important;
+    /* 提高z-index，确保输入框在最上层 */
+    cursor: text !important;
+    /* 确保鼠标指针正确 */
+    user-select: text !important;
+    /* 允许文本选择 */
+    -webkit-user-select: text !important;
+    /* Safari兼容性 */
+    -moz-user-select: text !important;
+    /* Firefox兼容性 */
+    -ms-user-select: text !important;
+    /* IE兼容性 */
+    display: block !important;
+    /* 确保显示为块级元素 */
+    opacity: 1 !important;
+    /* 确保不透明 */
+    pointer-events: auto !important;
+    /* 确保可以接收鼠标事件 */
+
+    /* 确保输入框可用性 */
+    -webkit-appearance: none !important;
+    /* 移除WebKit默认样式 */
+    -moz-appearance: none !important;
+    /* 移除Firefox默认样式 */
+    appearance: none !important;
+    /* 移除默认样式 */
+
+    /* 确保输入框可编辑 */
+    -webkit-text-fill-color: #e2e8f0 !important;
+    /* WebKit文本颜色 */
+    -webkit-box-shadow: none !important;
+    /* 移除WebKit阴影 */
+    box-shadow: none !important;
+    /* 移除阴影 */
+
+    /* 防止输入框被意外隐藏 */
+    visibility: visible !important;
+    clip: auto !important;
+    overflow: visible !important;
+
+    /* 确保输入框响应性 */
+    touch-action: manipulation !important;
+    /* 优化触摸操作 */
+    -webkit-touch-callout: none !important;
+    /* 禁用触摸长按菜单 */
+}
+
+.console-input-field:focus {
+    border-color: #3182ce;
+    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2);
+    background-color: #2a3441;
+    /* 稍微亮一点的背景色 */
+    z-index: 15;
+    /* 确保focus状态下在最上层 */
+}
+
+/* 确保输入框在hover状态下也有正确的样式 */
+.console-input-field:hover {
+    border-color: #4a5568;
+    background-color: #2a3441;
+}
+
+.console-input-container button {
+    margin-left: 10px;
+    padding: 8px 16px;
+    background-color: #3182ce;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+    min-width: 60px;
+    /* 设置按钮最小宽度 */
+    white-space: nowrap;
+    /* 防止按钮文字换行 */
+    flex-shrink: 0;
+    /* 防止按钮被压缩 */
+}
+
+/* 提示文本样式 */
+.console-input-container span {
+    margin-right: 10px;
+    color: #FFA500;
+    /* 橙色 */
+    font-family: 'Consolas', monospace;
+    /* 与console log一致的字体 */
+    white-space: nowrap;
+    /* 防止提示文本换行 */
+    flex-shrink: 0;
+    /* 防止提示文本被压缩 */
+}
+
+/* 响应式处理 - 当容器宽度不足时 */
+@media (max-width: 500px) {
+    .console-input-container {
+        min-width: 350px;
+        /* 在窄屏幕上设置合理的最小宽度 */
+        flex-direction: column;
+        /* 改为垂直布局 */
+        align-items: stretch;
+        padding: 15px;
+        /* 增加padding，提供更好的触摸体验 */
+    }
+
+    .console-input-container span {
+        margin-right: 0;
+        margin-bottom: 10px;
+        text-align: center;
+        font-size: 16px;
+        /* 增加字体大小 */
+        font-family: 'Consolas', monospace;
+        /* 确保移动端也使用一致字体 */
+        color: #FFA500;
+        /* 确保移动端也显示橙色 */
+    }
+
+    .console-input-field {
+        margin-bottom: 10px;
+        min-width: 250px;
+        /* 确保输入框有足够的宽度 */
+        font-size: 16px;
+        /* 增加字体大小 */
+        padding: 10px 15px;
+        /* 增加padding */
+    }
+
+    .console-input-container button {
+        margin-left: 0;
+        align-self: center;
+        padding: 10px 20px;
+        /* 增加按钮padding */
+        font-size: 16px;
+        /* 增加字体大小 */
+    }
+}
+
+/* 调试样式 - 帮助排查布局问题 */
+/* 暂时注释掉，避免样式冲突 */
+/*
+.console-input-container {
+    border: 2px solid red;
+}
+
+.console-input-field {
+    border: 1px solid blue;
+}
+*/
+
+.console-input-container button:hover {
+    background-color: #2c5aa0;
+}
+
+.console-input-container button:active {
+    background-color: #1e3a8a;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

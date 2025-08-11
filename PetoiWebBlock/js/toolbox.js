@@ -62,6 +62,7 @@ function createToolbox() {
                     { kind: "block", type: "math_number_property" },
                     { kind: "block", type: "math_round" },
                     { kind: "block", type: "math_modulo" },
+                    { kind: "block", type: "math_random" },
                 ],
             },
             {
@@ -154,7 +155,18 @@ function createToolbox() {
                     { kind: "block", type: "get_digital_input" },
                     { kind: "block", type: "get_analog_input" },
                     { kind: "block", type: "set_digital_output" },
-                    { kind: "block", type: "set_analog_output" },
+                    { kind: "block", type: "set_analog_output",
+                        inputs: {
+                            VALUE: {
+                                shadow: {
+                                    type: "math_number",
+                                    fields: {
+                                        NUM: 128,
+                                    },
+                                },
+                            },
+                        } 
+                    },
                     { kind: "block", type: "getUltrasonicDistance" },
                     { kind: "block", type: "getCameraCoordinate" },
                     { kind: "block", type: "send_custom_command",
@@ -266,6 +278,7 @@ function createToolbox() {
                 colour: "#9C27B0",
                 contents: [
                     { kind: "block", type: "console_log_variable" },
+                    { kind: "block", type: "console_input" },
                     { kind: "block", type: "delay_ms" },
                 ],
             },
@@ -289,23 +302,31 @@ function blocklyGlobalConfig() {
     };
 
     const digitalInputOptions = [
-        ["34", "34"],
-        ["35", "35"],
-        ["36", "36"],
-        ["39", "39"],
         ["BackTouch(38)", "38"],
         ["Rx2(9)", "9"],
         ["Tx2(10)", "10"],
     ];
 
     const analogInputOptions = [
-        ["34", "34"],
-        ["35", "35"],
-        ["36", "36"],
-        ["39", "39"],
         ["BackTouch(38)", "38"],
         ["Rx2(9)", "9"],
         ["Tx2(10)", "10"],
+    ];
+
+    const digitalOutputOptions = [
+        ["BackTouch(38)", "38"],
+        ["Rx2(9)", "9"],
+        ["Tx2(10)", "10"],
+        ["Buzzer","2"],
+        ["LED","27"],
+    ];
+
+    const analogOutputOptions = [
+        ["BackTouch(38)", "38"],
+        ["Rx2(9)", "9"],
+        ["Tx2(10)", "10"],
+        ["Buzzer","2"],
+        ["LED","27"],
     ];
 
     const jointOptions = [
@@ -504,7 +525,7 @@ function blocklyGlobalConfig() {
                     {
                         type: "field_dropdown",
                         name: "PIN",
-                        options: digitalInputOptions,
+                        options: digitalOutputOptions,
                     },
                     {
                         type: "field_dropdown",
@@ -533,14 +554,12 @@ function blocklyGlobalConfig() {
                     {
                         type: "field_dropdown",
                         name: "PIN",
-                        options: analogInputOptions,
+                        options: analogOutputOptions,
                     },
                     {
-                        type: "field_number",
+                        type: "input_value",
                         name: "VALUE",
-                        value: 128,
-                        min: 0,
-                        max: 255,
+                        check: "Number",
                     },
                 ],
                 previousStatement: null,
@@ -573,6 +592,27 @@ function blocklyGlobalConfig() {
                 previousStatement: null,
                 nextStatement: null,
                 colour: "#E63946", // 通信积木：红色
+                tooltip: "",
+            });
+        }
+    }
+
+    // 控制台输入积木
+    Blockly.Blocks["console_input"] = {
+        init: function () {
+            this.jsonInit({
+                type: "console_input",
+                message0: getText("consoleInput"),
+                args0: [
+                    {
+                        type: "field_input",
+                        name: "PROMPT",
+                        text: getText("consoleInputDefaultPrompt"),
+                        spellcheck: false,
+                    },
+                ],
+                output: "String",
+                colour: "#9C27B0", // 控制台积木：紫色
                 tooltip: "",
             });
         }
@@ -1065,6 +1105,8 @@ function blocklyGlobalConfig() {
                 [getText("postureSit"), "ksit"],
                 [getText("postureRest"), "d"],
                 [getText("posturePee"), "kpee"],
+                // 添加新的选项
+                [getText("postureSayHi"), "khi"],  // 新增
             ];
 
             this.appendDummyInput()
@@ -1151,5 +1193,86 @@ function blocklyGlobalConfig() {
                 colour: "#4361EE",
             });
         },
+    };
+
+    // 随机数积木块
+    Blockly.Blocks["math_random"] = {
+        init: function () {
+            this.jsonInit({
+                type: "math_random",
+                message0: getText("mathRandomMessage"),
+                args0: [
+                    {
+                        type: "field_number",
+                        name: "FROM",
+                        value: 1,
+                        min: -999999,
+                        max: 999999,
+                        step: 1
+                    },
+                    {
+                        type: "field_number",
+                        name: "TO",
+                        value: 10,
+                        min: -999999,
+                        max: 999999,
+                        step: 1
+                    },
+                    {
+                        type: "field_dropdown",
+                        name: "TYPE",
+                        options: [
+                            [getText("mathRandomInteger"), "Integer"],
+                            [getText("mathRandomDecimal"), "Decimal"]
+                        ]
+                    }
+                ],
+                output: "Number",
+                colour: "#5B67A5", // 数学积木：蓝色
+                tooltip: getText("mathRandomTooltip"),
+                helpUrl: "",
+            });
+            
+            // 添加自定义验证逻辑
+            this.setOnChange(function(changeEvent) {
+                if (changeEvent.type === "change" && 
+                    (changeEvent.name === "FROM" || changeEvent.name === "TO" || changeEvent.name === "TYPE")) {
+                    this.validateRandomBlock();
+                }
+            });
+        },
+        
+        validateRandomBlock: function() {
+            const fromField = this.getField("FROM");
+            const toField = this.getField("TO");
+            const typeField = this.getField("TYPE");
+            
+            if (!fromField || !toField || !typeField) return;
+            
+            const fromValue = parseFloat(fromField.getValue());
+            const toValue = parseFloat(toField.getValue());
+            const typeValue = typeField.getValue();
+            
+            let isValid = true;
+            
+            // 验证范围：后面的数字必须大于或等于前面的数字
+            if (toValue < fromValue) {
+                isValid = false;
+            }
+            
+            // 验证整数类型：只能输入整数
+            if (typeValue === "Integer") {
+                if (!Number.isInteger(fromValue) || !Number.isInteger(toValue)) {
+                    isValid = false;
+                }
+            }
+            
+            // 设置字段颜色
+            const errorColor = "#FF0000"; // 红色
+            const normalColor = "#FFFFFF"; // 白色
+            
+            fromField.setColour(isValid ? normalColor : errorColor);
+            toField.setColour(isValid ? normalColor : errorColor);
+        }
     };
 }

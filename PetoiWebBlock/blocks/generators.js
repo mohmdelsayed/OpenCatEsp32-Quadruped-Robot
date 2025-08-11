@@ -515,21 +515,20 @@ try {
 };
 
 // 代码生成:设置模拟输出积木
-javascript.javascriptGenerator.forBlock["set_analog_output"] = function (
+Blockly.JavaScript.forBlock["set_analog_output"] = function (
     block
 ) {
     const pin = block.getFieldValue("PIN");
-    const value = block.getFieldValue("VALUE");
-    const command = encodeCommand("Wa", [pin, value]);
-    return wrapAsyncOperation(`const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result);`) + '\n';
+    const value = Blockly.JavaScript.valueToCode(block, "VALUE", Blockly.JavaScript.ORDER_ATOMIC) || "128";
+    return wrapAsyncOperation(`const analogValue = ${value}; const command = encodeCommand("Wa", ["${pin}", analogValue]); const result = await webRequest(command, 5000, true); if (result !== null) console.log(result);`) + '\n';
 };
 
 // 代码生成:设置数字输出的代码
-javascript.javascriptGenerator.forBlock["set_digital_output"] = function (
+Blockly.JavaScript.forBlock["set_digital_output"] = function (
     block
 ) {
     const pin = block.getFieldValue("PIN");
-    const value = block.getFieldValue("VALUE");
+    const value = block.getFieldValue("STATE");
     const command = encodeCommand("Wd", [pin, value]);
     return wrapAsyncOperation(`const result = await webRequest("${command}", 5000, true); if (result !== null) console.log(result);`) + '\n';
 };
@@ -568,8 +567,26 @@ Blockly.JavaScript.forBlock["get_analog_input"] = function (block) {
     return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
 };
 
+// 代码生成:控制台输入代码生成器
+Blockly.JavaScript.forBlock["console_input"] = function (block) {
+    const prompt = block.getFieldValue("PROMPT");
+    let code = `await (async function() {
+    checkStopExecution();
+    // 检查是否使用默认提示文本，如果是则使用当前语言的翻译
+    const promptText = "${prompt}";
+    const finalPrompt = (promptText === getText("consoleInputDefaultPrompt") || 
+                        promptText === "Please input:" || 
+                        promptText === "请输入:" || 
+                        promptText === "入力してください:") ? 
+                       getText("consoleInputDefaultPrompt") : promptText;
+    const result = await window.consoleInput(finalPrompt);
+    return result;
+  })()`;
+    return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
+};
+
 // 代码生成:获取超声波传感器距离积木 - 只在showDebug下自动打印
-javascript.javascriptGenerator.forBlock["getUltrasonicDistance"] = function (
+Blockly.JavaScript.forBlock["getUltrasonicDistance"] = function (
     block
 ) {
     const trPin = block.getFieldValue("TRPIN");
@@ -598,7 +615,7 @@ javascript.javascriptGenerator.forBlock["getUltrasonicDistance"] = function (
 //   "height": 50,    // 目标高度
 //   "timestamp": 1234567890
 // }
-javascript.javascriptGenerator.forBlock["getCameraCoordinate"] = function (
+Blockly.JavaScript.forBlock["getCameraCoordinate"] = function (
     block
 ) {
     let code = `
@@ -608,7 +625,7 @@ await (async function() {
   checkStopExecution();
   const rawResult = await webRequest("XCp", 5000, true);
   const result = parseCameraCoordinateResult(rawResult);
-  return result;
+    return result;
 })()
 `;
     return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
@@ -902,4 +919,22 @@ for (const ${variable0} of ${argument0}) {
   ${branch}
 }`;
     return code;
+};
+
+// 代码生成:随机数积木块
+Blockly.JavaScript.forBlock["math_random"] = function(block) {
+    const from = block.getFieldValue("FROM");
+    const to = block.getFieldValue("TO");
+    const type = block.getFieldValue("TYPE");
+    
+    let code;
+    if (type === "Integer") {
+        // 生成整数随机数
+        code = `Math.floor(Math.random() * (${to} - ${from} + 1)) + ${from}`;
+    } else {
+        // 生成小数随机数
+        code = `Math.random() * (${to} - ${from}) + ${from}`;
+    }
+    
+    return [code, Blockly.JavaScript.ORDER_FUNCTION_CALL];
 };

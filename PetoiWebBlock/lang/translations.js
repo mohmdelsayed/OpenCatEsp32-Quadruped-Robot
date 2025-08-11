@@ -158,6 +158,8 @@ const TRANSLATIONS = {
     "setDigitalOutput": "设置数字输出 引脚 %1 状态 %2",
     "setAnalogOutput": "设置模拟输出 引脚 %1 数值 %2",
     "sendCustomCommand": "执行串口命令 %1 后延时 %2 秒",
+    "consoleInput": "打印提示 \"%1\" 并获取输入",
+    "consoleInputDefaultPrompt": "请输入:",
     "trackUltrasonicDistance": "变量 %1 获取超声波传感器距离(cm): 触发 %2 回响 %3",
     "getUltrasonicDistance": "获取超声波传感器距离(cm): 触发 %1 回响 %2",
     "trackCameraCoordinate": "变量 %1 摄像头识别目标的坐标值(x, y, width, height)",
@@ -198,6 +200,12 @@ const TRANSLATIONS = {
     // 积木文本 - 音乐
     "playNoteMessage": "播放音符 %1 持续 %2 拍",
     "playMelodyMessage": "播放旋律 %1\n后延时 %2 秒",
+
+    // 积木文本 - 数学
+    "mathRandomMessage": "随机数 %1 到 %2 %3",
+    "mathRandomInteger": "整数",
+    "mathRandomDecimal": "小数",
+    "mathRandomTooltip": "生成指定范围内的随机数",
 
     // 动作选项
     "stand": "站立",
@@ -445,7 +453,8 @@ const TRANSLATIONS = {
     "armClap": "鼓掌",
     "blockRunError": "消息处理错误:",
     "enterFileName": "请输入文件名:",
-    "actionSkillFile": "执行技能文件 %1 中的技能后延时 %2 秒"
+    "actionSkillFile": "执行技能文件 %1 中的技能后延时 %2 秒",
+    "postureSayHi": "打招呼"
   },
 
   en: {
@@ -607,6 +616,8 @@ const TRANSLATIONS = {
     "setDigitalOutput": "Set Digital Output Pin %1 State %2",
     "setAnalogOutput": "Set Analog Output Pin %1 Value %2",
     "sendCustomCommand": "Send Serial Command %1 then delay %2 sec",
+    "consoleInput": "Print prompt \"%1\" and get input",
+    "consoleInputDefaultPrompt": "Please input:",
     "trackUltrasonicDistance": "Variable %1 get ultrasonic sensor distance(cm): Trigger %2 Echo %3",
     "getUltrasonicDistance": "Get ultrasonic sensor distance(cm): Trigger %1 Echo %2",
     "trackCameraCoordinate": "Variable %1 camera detected target coordinates(x, y, width, height)",
@@ -647,6 +658,12 @@ const TRANSLATIONS = {
     // Block text - Music
     "playNoteMessage": "Play note %1 for %2 beat",
     "playMelodyMessage": "Play Melody %1\nthen delay %2 sec",
+
+    // Block text - Math
+    "mathRandomMessage": "pick random %1 to %2 %3",
+    "mathRandomInteger": "Integer",
+    "mathRandomDecimal": "Decimal",
+    "mathRandomTooltip": "Generate a random number in the specified range",
 
     // Action options
     "sit": "Sit",
@@ -893,7 +910,8 @@ const TRANSLATIONS = {
     "armClap": "clap",
     "blockRunError": "Message processing error:",
     "enterFileName": "Please enter filename:",
-    "actionSkillFile": "Execute skill file %1 after delay %2 seconds"
+    "actionSkillFile": "Execute skill file %1 after delay %2 seconds",
+    "postureSayHi": "Hi"
   },
 
   ja: {
@@ -1062,6 +1080,8 @@ const TRANSLATIONS = {
     "setDigitalOutput": "デジタル出力ピン %1 状態 %2 を設定",
     "setAnalogOutput": "アナログ出力ピン %1 値 %2 を設定",
     "sendCustomCommand": "カスタムコマンドを送信 %1 の後 %2 秒待機",
+    "consoleInput": "プロンプト \"%1\" を表示して入力を取得",
+    "consoleInputDefaultPrompt": "入力してください:",
     "trackUltrasonicDistance": "変数 %1 超音波センサー距離(cm)を取得: トリガー %2 エコー %3",
     "getUltrasonicDistance": "超音波センサー距離(cm)を取得: トリガー %1 エコー %2",
     "trackCameraCoordinate": "変数 %1 カメラ検出目標座標(x, y, width, height)",
@@ -1347,7 +1367,8 @@ const TRANSLATIONS = {
     "armClap": "鼓掌",
     "blockRunError": "メッセージ処理エラー:",
     "enterFileName": "ファイル名を入力してください:",
-    "actionSkillFile": "技能ファイル %1 の後 %2 秒待機"
+    "actionSkillFile": "技能ファイル %1 の後 %2 秒待機",
+    "postureSayHi": "打招呼"
   }
 };
 

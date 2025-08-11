@@ -27,10 +27,13 @@
 <body>
   <div class="header">
     <div class="title" data-i18n="appTitle">Petoi Web Coding Blocks</div>
-    <div class="language-switch">
-      <button id="zhBtn" class="lang-btn" onclick="setLanguage('zh')">中文</button>
-      <button id="enBtn" class="lang-btn active" onclick="setLanguage('en')">English</button>
-      <button id="jaBtn" class="lang-btn" onclick="setLanguage('ja')">日本語</button>
+    <div class="header-right">
+      <div class="version-date" id="versionDate"></div>
+      <div class="language-switch">
+        <button id="zhBtn" class="lang-btn" onclick="setLanguage('zh')">中文</button>
+        <button id="enBtn" class="lang-btn active" onclick="setLanguage('en')">English</button>
+        <button id="jaBtn" class="lang-btn" onclick="setLanguage('ja')">日本語</button>
+      </div>
     </div>
   </div>
   <div class="container">
@@ -135,6 +138,21 @@
       const seconds = String(now.getSeconds()).padStart(2, '0');
       const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
       return `[${hours}:${minutes}:${seconds}.${milliseconds}]`;
+    }
+
+    // 设置版本日期
+    function setVersionDate()
+    {
+      const versionElement = document.getElementById('versionDate');
+      if (versionElement)
+      {
+        // 使用当前日期作为版本日期
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        versionElement.textContent = `v${year}.${month}.${day}`;
+      }
     }
 
     // 加载配置文件
@@ -326,6 +344,7 @@
           block.type === 'set_digital_output' ||
           block.type === 'set_analog_output' ||
           block.type === 'send_custom_command' ||
+          block.type === 'console_input' ||
           block.type === 'delay_ms' ||
           block.type === 'posture' ||
           block.type === 'gait' ||
@@ -552,6 +571,9 @@
 
         // 更新UI文本
         updateUIText();
+
+        // 设置版本日期
+        setVersionDate();
 
         if (typeof window.updateUITranslations === 'function')
         {
@@ -1110,6 +1132,12 @@
 
         stopExecution = true;
         console.log(getText("stopRequested"));
+
+        // 清理控制台输入界面
+        if (typeof clearConsoleInput === 'function')
+        {
+          clearConsoleInput();
+        }
       }
     }
 
@@ -1230,6 +1258,11 @@ ${code}
   stopBtn.style.backgroundColor = '';
   stopBtn.style.color = '';
   document.querySelector('button[onclick="runCode()"]').style.display = 'inline-block';
+  
+  // 清理控制台输入界面
+  if (typeof clearConsoleInput === 'function') {
+    clearConsoleInput();
+  }
   
   console.log(getText("programExecutionCompleted"));
 });

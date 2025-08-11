@@ -561,7 +561,7 @@ class PetoiAsyncClient
                         if (typeof showDebug !== 'undefined' && showDebug) {
                             console.log('Gyroscope disable command detected, waiting 100ms for task shutdown...');
                         }
-                        await this.delay(100);
+                        await this.delay(200);
                     }
                     
                     // 恢复心跳检测

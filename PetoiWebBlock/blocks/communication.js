@@ -210,3 +210,266 @@ function logWebRequestResult(result) {
   }
   console.log(result);
 }
+
+// 控制台输入相关函数
+let consoleInputPromise = null;
+let consoleInputResolve = null;
+let currentInputContainer = null; // 跟踪当前的输入容器
+
+// 创建控制台输入界面
+function createConsoleInput(prompt) {
+  return new Promise((resolve) => {
+    // 如果已经有输入等待，先取消之前的
+    if (consoleInputPromise) {
+      if (currentInputContainer) {
+        try {
+          currentInputContainer.remove();
+        } catch (e) {
+          // 静默处理错误
+        }
+        currentInputContainer = null;
+      }
+      consoleInputResolve('');
+      consoleInputPromise = null;
+    }
+    
+    consoleInputPromise = true;
+    consoleInputResolve = resolve;
+    
+    // 检查程序是否被停止
+    if (typeof stopExecution !== 'undefined' && stopExecution) {
+      resolve('');
+      return;
+    }
+    
+    // 创建输入界面
+    const consoleLog = document.getElementById('consoleLog');
+    if (!consoleLog) {
+      resolve('');
+      return;
+    }
+    
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'console-input-container';
+    
+    const promptSpan = document.createElement('span');
+    promptSpan.textContent = prompt;
+    promptSpan.style.cssText = `
+      color: #FFA500;
+      margin-right: 10px;
+      font-family: 'Consolas', monospace;
+    `;
+    
+    const inputField = document.createElement('input');
+    inputField.type = 'text';
+    inputField.className = 'console-input-field';
+    
+    const submitBtn = document.createElement('button');
+    submitBtn.textContent = 'Enter';
+    
+    inputContainer.appendChild(promptSpan);
+    inputContainer.appendChild(inputField);
+    inputContainer.appendChild(submitBtn);
+    
+    // 保存对当前输入容器的引用
+    currentInputContainer = inputContainer;
+    
+    consoleLog.appendChild(inputContainer);
+    
+    // 延迟聚焦，确保DOM完全渲染
+    setTimeout(() => {
+      if (inputField && document.contains(inputField)) {
+        inputField.focus();
+        
+        // 设置输入框属性，防止被意外修改
+        inputField.setAttribute('data-console-input', 'true');
+        inputField.setAttribute('autocomplete', 'off');
+        inputField.setAttribute('spellcheck', 'false');
+        
+        // 确保输入框可编辑
+        inputField.removeAttribute('disabled');
+        inputField.removeAttribute('readonly');
+        inputField.contentEditable = false;
+        
+        // 监听输入框属性变化
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes') {
+              const target = mutation.target;
+              if (target.disabled || target.readOnly) {
+                target.disabled = false;
+                target.readOnly = false;
+              }
+            }
+          });
+        });
+        
+        observer.observe(inputField, {
+          attributes: true,
+          attributeFilter: ['disabled', 'readonly']
+        });
+        
+        // 防止输入框被其他代码干扰
+        const originalFocus = inputField.focus;
+        const originalBlur = inputField.blur;
+        
+        // 重写focus方法，确保聚焦成功
+        inputField.focus = function() {
+          try {
+            originalFocus.call(this);
+            // 确保输入框可编辑
+            this.disabled = false;
+            this.readOnly = false;
+            this.contentEditable = false;
+          } catch (e) {
+            // 静默处理错误
+          }
+        };
+        
+        // 重写blur方法，防止意外失去焦点
+        inputField.blur = function() {
+          // 只有在提交时才允许失去焦点
+          if (!consoleInputPromise) {
+            originalBlur.call(this);
+          } else {
+            this.focus();
+          }
+        };
+      }
+    }, 100);
+    
+    // 处理输入提交
+    const handleSubmit = () => {
+      const value = inputField.value;
+      
+      // 清理状态
+      try {
+        if (consoleLog.contains(inputContainer)) {
+          consoleLog.removeChild(inputContainer);
+        }
+      } catch (e) {
+        // 静默处理错误
+      }
+      
+      currentInputContainer = null;
+      consoleInputPromise = null;
+      consoleInputResolve(value);
+    };
+    
+    // 回车键提交
+    inputField.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // 防止默认行为
+        handleSubmit();
+      }
+    });
+    
+    // 点击按钮提交
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault(); // 防止默认行为
+      handleSubmit();
+    });
+    
+    // 防止输入框失去焦点时被意外清理
+    inputField.addEventListener('blur', (e) => {
+      // 延迟检查，避免在提交过程中触发
+      setTimeout(() => {
+        if (consoleInputPromise && document.contains(inputField)) {
+          // 尝试重新聚焦
+          try {
+            inputField.focus();
+            // 如果重新聚焦失败，再次尝试
+            setTimeout(() => {
+              if (document.contains(inputField) && document.activeElement !== inputField) {
+                inputField.focus();
+              }
+            }, 50);
+          } catch (focusError) {
+            // 静默处理错误
+          }
+        }
+      }, 100);
+    });
+    
+    // 防止输入框被意外禁用
+    inputField.addEventListener('input', (e) => {
+      if (e.target.disabled || e.target.readOnly) {
+        e.target.disabled = false;
+        e.target.readOnly = false;
+      }
+    });
+    
+    // 添加日志条目显示提示
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+    logEntry.style.cssText = `
+      color: #FFA500;
+      font-family: 'Consolas', monospace;
+      margin: 5px 0;
+    `;
+    
+    // 使用与其他console log一致的timestamp格式
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+    const timestamp = `[${hours}:${minutes}:${seconds}.${milliseconds}]`;
+    logEntry.innerHTML = `<span class="timestamp" style="color: #888; font-family: 'Consolas', monospace;">${timestamp}</span> ${prompt}`;
+    consoleLog.appendChild(logEntry);
+  });
+}
+
+// 控制台输入函数
+async function consoleInput(prompt) {
+  // 防止重复调用
+  if (consoleInputPromise) {
+    clearConsoleInput();
+    // 等待一小段时间确保清理完成
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  
+  return await createConsoleInput(prompt);
+}
+
+// 将函数暴露到全局作用域
+window.consoleInput = consoleInput;
+window.createConsoleInput = createConsoleInput;
+window.clearConsoleInput = clearConsoleInput;
+
+// 清理控制台输入界面
+function clearConsoleInput() {
+  if (consoleInputPromise) {
+    // 移除输入界面
+    if (currentInputContainer) {
+      try {
+        if (currentInputContainer.parentNode) {
+          currentInputContainer.parentNode.removeChild(currentInputContainer);
+        }
+      } catch (e) {
+        // 静默处理错误
+      }
+      currentInputContainer = null;
+    } else {
+      // 备用清理方法
+      const consoleLog = document.getElementById('consoleLog');
+      if (consoleLog) {
+        const inputContainer = consoleLog.querySelector('.console-input-container');
+        if (inputContainer) {
+          try {
+            consoleLog.removeChild(inputContainer);
+          } catch (e) {
+            // 静默处理错误
+          }
+        }
+      }
+    }
+    
+    // 取消等待
+    if (consoleInputResolve) {
+      consoleInputResolve('');
+    }
+    consoleInputPromise = null;
+    consoleInputResolve = null;
+  }
+}
