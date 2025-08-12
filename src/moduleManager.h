@@ -148,9 +148,9 @@ void initModule(char moduleCode) {
       {
         updateGyroQ = false;
         i2cDetect(Wire);
-#if defined BiBoard_V1_0 && !defined NYBBLE
-        i2cDetect(Wire1);
-#endif
+// #if defined BiBoard_V1_0 && !defined NYBBLE
+//         i2cDetect(Wire1);
+// #endif
         loadBySkillName("sit");
         if (!cameraSetup()) {
           int i = indexOfModule(moduleCode);

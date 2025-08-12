@@ -77,7 +77,7 @@
 #define BOARD "B"
 #endif
 
-#define DATE "250801"  // YYMMDD
+#define DATE "250812"  // YYMMDD
 String SoftwareVersion = "";
 String uniqueName = "";
 
@@ -653,9 +653,9 @@ void initRobot() {
   PTF("Software version: ");
   printToAllPorts(SoftwareVersion);
   i2cDetect(Wire);
-#if defined BiBoard_V1_0 && !defined NYBBLE
-  i2cDetect(Wire1);
-#endif
+// #if defined BiBoard_V1_0 && !defined NYBBLE
+//   i2cDetect(Wire1);
+// #endif
 #ifndef I2C_EEPROM_ADDRESS
   config.begin("config", false);  // false: read/write mode. true: read-only mode.
 #endif
