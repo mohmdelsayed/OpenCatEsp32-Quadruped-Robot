@@ -77,7 +77,7 @@
 #define BOARD "B"
 #endif
 
-#define DATE "250728"  // YYMMDD
+#define DATE "250812"  // YYMMDD
 String SoftwareVersion = "";
 String uniqueName = "";
 
@@ -396,6 +396,7 @@ bool newBoard = false;
 #define IMU_EXCEPTION_PUSHED -4
 #define IMU_EXCEPTION_OFFDIRECTION -5
 #define IMU_EXCEPTION_FREEFALL -6
+#define IMU_EXCEPTION_TURNING -7
 
 char defaultLan = 'a';
 char currentLan;
@@ -477,6 +478,8 @@ int8_t imuException = 0;
 int8_t prev_imuException = 0;
 byte transformSpeed = 2;
 float protectiveShift;  // reduce the wearing of the potentiometer
+
+
 
 int8_t moduleList[] = {
     EXTENSION_GROVE_SERIAL,
@@ -651,9 +654,9 @@ void initRobot() {
   PTF("Software version: ");
   printToAllPorts(SoftwareVersion);
   i2cDetect(Wire);
-#if defined BiBoard_V1_0 && !defined NYBBLE
-  i2cDetect(Wire1);
-#endif
+// #if defined BiBoard_V1_0 && !defined NYBBLE
+//   i2cDetect(Wire1);
+// #endif
 #ifndef I2C_EEPROM_ADDRESS
   config.begin("config", false);  // false: read/write mode. true: read-only mode.
 #endif
@@ -727,6 +730,8 @@ void initRobot() {
   loadBySkillName("rest");  // must have to avoid memory crash. need to check why.
                             // allCalibratedPWM(currentAng); alone will lead to crash
   delay(500);
+  
+
 
   initModuleManager();
 #ifdef GYRO_PIN

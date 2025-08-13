@@ -1,4 +1,5 @@
 #include "esp32-hal.h"
+#include <stdio.h>
 
 // Async web server function declarations
 #ifdef WEB_SERVER
@@ -9,12 +10,25 @@ void finishWebCommand();
 
 void dealWithExceptions() {
 #ifdef GYRO_PIN
+
+  // Handle turning exception regardless of gyroBalanceQ status
+  if (imuException == IMU_EXCEPTION_TURNING) {
+    PTL("EXCEPTION: turning target reached");
+    // Stop the robot and make it stand up
+    tQueue->addTask('k', "up");
+    needTurning = false;  // Reset flag after creating task
+    PTL("endTurn");
+    prev_imuException = imuException;
+    print6Axis();
+  }
+  
+  // Handle other IMU exceptions only when gyroBalanceQ is true
   if (gyroBalanceQ) {
     // if (imuException == IMU_EXCEPTION_FLIPPED || (skill->period == 1 && fabs(xyzReal[2]) >= 15) || (skill->period > 1
     // && abs(xyzReal[2]) >= 20)) {
     //   delay(50);
     // }
-    if (imuException) {  // the gyro reaction switch can be toggled on/off by the 'g' token
+    if (imuException && imuException != IMU_EXCEPTION_TURNING) {  // the gyro reaction switch can be toggled on/off by the 'g' token
       switch (imuException) {
         case IMU_EXCEPTION_LIFTED:
           {
@@ -1337,15 +1351,65 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
         }
       case T_SKILL:
         {
-          if (!strcmp("x", newCmd)        // x for random skill
-              || strcmp(lastCmd, newCmd)  // won't transform for the same gait.
+          // Parse skill command and arguments
+          char skillName[CMD_LEN + 1];
+          char *spacePos = strchr(newCmd, ' ');
+          int timeOrAngle = 0;
+          
+          if (spacePos != NULL) {
+            // Extract skill name (everything before the space)
+            int skillNameLen = spacePos - newCmd;
+            strncpy(skillName, newCmd, skillNameLen);
+            skillName[skillNameLen] = '\0';
+            
+            // Extract argument (everything after the space)
+            timeOrAngle = atoi(spacePos + 1);
+          } else {
+            // No arguments, use the full command as skill name
+            strcpy(skillName, newCmd);
+          }
+          
+          if (!strcmp("x", skillName)        // x for random skill
+              || strcmp(lastCmd, skillName)  // won't transform for the same gait.
               || skill->period <= 1) {    // skill->period can be NULL!
             // it's better to compare skill->skillName and newCmd.
             // but need more logics for non skill cmd in between
-            if (!strcmp(newCmd, "bk"))
-              strcpy(newCmd, "bkF");
-            loadBySkillName(newCmd);  // newCmd will be overwritten as dutyAngles then recovered from skill->skillName
+            if (!strcmp(skillName, "bk"))
+              strcpy(skillName, "bkF");
+            
+            loadBySkillName(skillName);  // skillName will be overwritten as dutyAngles then recovered from skill->skillName
             manualHeadQ = false;
+            
+            // Handle gait control with arguments
+            if (skill->period > 1 && timeOrAngle > 0) {
+              char lastChar = skillName[strlen(skillName) - 1];
+              
+              if (lastChar == 'F') {
+                // Straight gait - add task with timing
+                char taskCmd[CMD_LEN + 1];
+                sprintf(taskCmd, "%s", skillName);
+                tQueue->addTask('k', taskCmd, timeOrAngle);
+                tQueue->addTask('k', "up");
+                PTH("Added straight gait task: ", taskCmd);
+                PTHL(" with time: ", timeOrAngle);
+              } else if (lastChar == 'L' || lastChar == 'R') {
+                // Turning gait - set up turning control
+                // Note: wkR should turn counterclockwise (negative yaw), wkL should turn clockwise (positive yaw)
+                // This matches polar coordinate convention where positive angle is counterclockwise
+                turningQ = true;
+                initialYawAngle = ypr[0];  // ypr[0] is already negated to match polar coordinate convention
+                targetYawAngle = initialYawAngle + (lastChar == 'R' ? -timeOrAngle : timeOrAngle);
+                
+                // Normalize target angle to -180 to 180 range
+                while (targetYawAngle > 180) targetYawAngle -= 360;
+                while (targetYawAngle < -180) targetYawAngle += 360;
+                
+                PTH("Started turning gait: ", skillName);
+                PTHL(" initial yaw: ", initialYawAngle);
+                PTHL(" target angle: ", targetYawAngle);
+                PTHL(" turning direction: ", lastChar == 'R' ? "RIGHT (CCW)" : "LEFT (CW)");
+              }
+            }
             // if (skill->period > 0)
             //   printToAllPorts(token);
             // skill->info();
