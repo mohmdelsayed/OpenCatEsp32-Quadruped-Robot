@@ -1,20 +1,24 @@
+// 定义工具箱颜色变量
+const COMMUNICATION_COLOR = "#e2677c"; // 通信积木：红色
+const MOTION_COLOR = "#546acb";        // 动作积木：蓝色
+const CONSOLE_COLOR = "#57AFCF";       // 控制台积木：蓝色
+const MUSIC_COLOR = "#e488ce";         // 音乐积木：粉色
+const MATH_COLOR = "#5B67A5";          // 数学积木：蓝色
+
 const customTheme = Blockly.Theme.defineTheme("myCustomTheme", {
     base: Blockly.Themes.Classic, // 继承经典主题的基础配置
     categoryStyles: {
         communication_category: {
-            colour: "#E63946", // 红色
+            colour: COMMUNICATION_COLOR, // 红色
         },
         motion_category: {
-            colour: "#4361EE", // 蓝色
-        },
-        control_category: {
-            colour: "#06D6A0", // 绿色
-        },
-        sensor_category: {
-            colour: "#FFB703", // 黄色
+            colour: MOTION_COLOR, // 蓝色
         },
         console_category: {
-            colour: "#9C27B0", // 紫色
+            colour: CONSOLE_COLOR, // 蓝色
+        },
+        music_category: {
+            colour: MUSIC_COLOR, // 粉色
         },
     },
 });
@@ -275,7 +279,7 @@ function createToolbox() {
             {
                 kind: "category",
                 name: getText("categoryConsole"),
-                colour: "#9C27B0",
+                colour: CONSOLE_COLOR,
                 contents: [
                     { kind: "block", type: "console_log_variable" },
                     { kind: "block", type: "console_input" },
@@ -285,7 +289,7 @@ function createToolbox() {
             {
                 kind: "category",
                 name: getText("categoryMusic"),
-                colour: "#FF6B6B",
+                colour: MUSIC_COLOR,
                 contents: [
                     { kind: "block", type: "play_note" },
                     { kind: "block", type: "play_melody" },
@@ -302,15 +306,24 @@ function blocklyGlobalConfig() {
     };
 
     const digitalInputOptions = [
+        ["34", "34"],
+        ["35", "35"],
+        ["36", "36"],
+        ["39", "39"],
         ["BackTouch(38)", "38"],
         ["Rx2(9)", "9"],
         ["Tx2(10)", "10"],
     ];
 
     const analogInputOptions = [
+        ["34", "34"],
+        ["35", "35"],
+        ["36", "36"],
+        ["39", "39"],
         ["BackTouch(38)", "38"],
         ["Rx2(9)", "9"],
         ["Tx2(10)", "10"],
+        ["Battery", "37"],
     ];
 
     const digitalOutputOptions = [
@@ -358,7 +371,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 nextStatement: null,
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
                 helpUrl: "",
             });
@@ -395,7 +408,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 previousStatement: null,
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
         },
@@ -428,7 +441,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "Number",
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
             this.setFieldValue(trpinOptions[2][1], "TRPIN");
@@ -456,7 +469,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 previousStatement: null,
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
         },
@@ -469,7 +482,7 @@ function blocklyGlobalConfig() {
                 type: "getCameraCoordinate",
                 message0: getText("getCameraCoordinate"),
                 output: "Array",
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
         },
@@ -489,7 +502,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "Number",
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
         }
@@ -509,7 +522,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "Number",
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
         }
@@ -538,7 +551,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
         }
@@ -564,7 +577,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             })
         }
@@ -591,7 +604,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#E63946", // 通信积木：红色
+                colour: COMMUNICATION_COLOR, // 通信积木：红色
                 tooltip: "",
             });
         }
@@ -612,7 +625,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "String",
-                colour: "#9C27B0", // 控制台积木：紫色
+                colour: CONSOLE_COLOR, // 控制台积木：蓝色
                 tooltip: "",
             });
         }
@@ -641,7 +654,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -670,7 +683,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -700,7 +713,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -730,7 +743,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -749,7 +762,7 @@ function blocklyGlobalConfig() {
                     }
                 ],
                 output: "Array",
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -774,7 +787,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "Array",
-                colour: "#4361EE",
+                colour: MOTION_COLOR,
             });
         },
     };
@@ -806,7 +819,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "Array",
-                colour: "#4361EE",
+                colour: MOTION_COLOR,
             });
         },
     };
@@ -825,7 +838,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "Number",
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -838,7 +851,7 @@ function blocklyGlobalConfig() {
                 type: "get_all_joint_angles",
                 message0: getText("getAllJointAngles"),
                 output: "Array",
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -860,7 +873,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#9C27B0", // 控制台积木：紫色
+                colour: CONSOLE_COLOR, // 控制台积木：蓝色
                 tooltip: "",
             });
         }
@@ -884,7 +897,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#E63946", // 传感器积木：红色
+                colour: COMMUNICATION_COLOR, // 传感器积木：红色
                 tooltip: "",
             });
         },
@@ -904,7 +917,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#9C27B0", // 控制台积木：紫色
+                colour: CONSOLE_COLOR, // 控制台积木：蓝色
                 tooltip: "",
             });
         },
@@ -931,7 +944,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE", // 动作积木：蓝色
+                colour: MOTION_COLOR, // 动作积木：蓝色
                 tooltip: "",
             });
         },
@@ -994,7 +1007,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#FF6B6B", // 音乐积木：红色
+                colour: MUSIC_COLOR, // 音乐积木：粉色
                 tooltip: "",
             });
         },
@@ -1019,7 +1032,7 @@ function blocklyGlobalConfig() {
                     },
                 ],
                 output: "String",
-                colour: "#FF6B6B", // 音乐积木：红色
+                colour: MUSIC_COLOR, // 音乐积木：粉色
                 tooltip: "",
             });
         },
@@ -1046,7 +1059,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#FF6B6B", // 音乐积木：红色
+                colour: MUSIC_COLOR, // 音乐积木：粉色
                 tooltip: "",
             });
         }
@@ -1090,7 +1103,7 @@ function blocklyGlobalConfig() {
             this.setInputsInline(true);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#4361EE");
+            this.setColour(MOTION_COLOR);
         },
     };
 
@@ -1119,7 +1132,7 @@ function blocklyGlobalConfig() {
             this.setInputsInline(true);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#4361EE");
+            this.setColour(MOTION_COLOR);
         },
     };
 
@@ -1147,7 +1160,7 @@ function blocklyGlobalConfig() {
             this.setInputsInline(true);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#4361EE");
+            this.setColour(MOTION_COLOR);
         },
     };
 
@@ -1190,7 +1203,7 @@ function blocklyGlobalConfig() {
                 ],
                 previousStatement: null,
                 nextStatement: null,
-                colour: "#4361EE",
+                colour: MOTION_COLOR,
             });
         },
     };
@@ -1228,7 +1241,7 @@ function blocklyGlobalConfig() {
                     }
                 ],
                 output: "Number",
-                colour: "#5B67A5", // 数学积木：蓝色
+                colour: MATH_COLOR, // 数学积木：蓝色
                 tooltip: getText("mathRandomTooltip"),
                 helpUrl: "",
             });
