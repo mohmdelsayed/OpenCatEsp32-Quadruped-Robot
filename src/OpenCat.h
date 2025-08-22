@@ -470,6 +470,10 @@ bool imuLockI2c = false;
 bool gestureLockI2c = false;
 bool eepromLockI2c = false;
 
+// Camera single-shot mode variables
+extern bool cameraSingleShotQ;
+extern unsigned long cameraSingleShotTimer;
+
 #define HEAD_GROUP_LEN 4  // used for controlling head pan, tilt, tail, and other joints independent from walking
 int targetHead[HEAD_GROUP_LEN];
 

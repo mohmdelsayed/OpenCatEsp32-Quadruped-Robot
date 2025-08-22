@@ -1070,7 +1070,13 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
             showModuleStatus();
           else if (newCmd[0] != 'U' || (newCmd[0] == 'U' && cmdLen == 1)) {  // when reading the distance from ultrasonic sensor, the cmdLen is 3.
             // and we don't want to change the activation status of the ultrasonic sensor behavior
-            reconfigureTheActiveModule(newCmd);
+            
+            // Check for single-shot camera command (XCp) to avoid full module activation
+            bool isSingleShotCamera = (newCmd[0] == EXTENSION_CAMERA && cmdLen >= 2 && newCmd[1] == 'p');
+            
+            if (!isSingleShotCamera) {
+              reconfigureTheActiveModule(newCmd);
+            }
           }
 
           // deal with the following command
@@ -1101,26 +1107,49 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
             case EXTENSION_CAMERA:
               {
                 char *option = newCmd;
+                bool isSingleShot = false;
                 while (*(++option) != '~') {
                   if (*option == 'P')
                     cameraPrintQ = 2;
-                  else if (*option == 'p')
+                  else if (*option == 'p') {
                     cameraPrintQ = 1;
+                    isSingleShot = true;
+                    // Set single-shot mode for XCp command
+                    cameraSingleShotQ = true;
+                    cameraSingleShotTimer = millis();
+                  }
                   else if (*option == 'R')
                     cameraReactionQ = true;
                   else if (*option == 'r')
                     cameraReactionQ = false;
                 }
 
-                if (cameraPrintQ && cameraTaskActiveQ) {
+                // For single-shot commands, ensure camera is set up without full module activation
+                if (isSingleShot && !cameraSetupSuccessful) {
+                  cameraSetup();
+                }
+
+                if (cameraPrintQ && (cameraTaskActiveQ || isSingleShot)) {
+                  // For single-shot, start camera task if needed and wait briefly for a fresh frame
+                  unsigned long waitStart = millis();
+                  int prevX = xCoord, prevY = yCoord, prevW = width, prevH = height;
+                  if (isSingleShot && !cameraTaskActiveQ) {
+                    read_camera(); // start the camera task
+                  }
+
+                  // Wait up to ~200ms for new data to arrive from the camera task
+                  // Conditions to break early: detectedObjectQ set, or any coordinate/size changed
+                  while (isSingleShot && millis() - waitStart < 200) {
+                    if (detectedObjectQ || xCoord != prevX || yCoord != prevY || width != prevW || height != prevH)
+                      break;
+                    delay(5);
+                  }
+
                   printToAllPorts('=');
                   showRecognitionResult(xCoord, yCoord, width, height);
                   PTL();
-                  // printToAllPorts(token);
                   if (cameraPrintQ == 1)
-                    cameraPrintQ = 0;  // if the command is XCp, the camera will print the result only once
-                  // else
-                  //   FPS();
+                    cameraPrintQ = 0;  // XCp: print once then stop
                 }
 
                 break;

@@ -27,13 +27,16 @@ SoftwareSerial mySerial(UART_RX2, UART_TX2);
 
 TaskHandle_t TASK_HandleCamera = NULL;
 bool cameraTaskActiveQ = 0;
+bool cameraSingleShotQ = false;  // Track if camera is in single-shot mode
+unsigned long cameraSingleShotTimer = 0;  // Timer for single-shot camera operations
 
 bool detectedObjectQ = false;
 bool cameraReactionQ = true;
 bool updateCoordinateLock = false;
 int8_t cameraPrintQ = 0;
-int xCoord = -1, yCoord = -1, width = 0, height = 0; // the x y returned by the sensor
-int lastXcoord = -1, lastYcoord = -1;
+int xCoord = 50, yCoord = 50, width = 0, height = 0; // the x y returned by the sensor, initialized to center
+int lastXcoord = 50, lastYcoord = 50;
+int colorLabel = -1;  // Store the detected color label
 int imgRangeX = 100;               // the frame size 0~100 on X and Y direction
 int imgRangeY = 100;
 
@@ -266,13 +269,13 @@ void cameraBehavior(int xCoord, int yCoord, int width) {
     if (width < 25 && width != 16) {  // 16 maybe a noise signal
       tQueue->addTask('k', currentX < -15 ? "wkR" : (currentX > 15 ? "wkL" : "wkF"),
                       (50 - width) * 50);  // walk towards you
-      tQueue->addTask('k', "sit");
-      tQueue->addTask('i', "");
+      // tQueue->addTask('k', "sit");  // Disabled sitting behavior when using camera
+      // tQueue->addTask('i', "");
       currentX = 0;
     } else if (widthCounter > 2) {
       tQueue->addTask('k', "bk", 1000);  // the robot will walk backward if you get too close!
-      tQueue->addTask('k', "sit");
-      tQueue->addTask('i', "");
+      // tQueue->addTask('k', "sit");  // Disabled sitting behavior when using camera
+      // tQueue->addTask('i', "");
       widthCounter = 0;
       currentX = 0;
     } else
@@ -338,8 +341,8 @@ void cameraBehavior(int xCoord, int yCoord, int width) {
 #ifdef ROTATE
         else {
           tQueue->addTask('k', (currentX < 0 ? "vtR" : "vtL"), abs(currentX) * 40);  // spin its body to follow you
-          tQueue->addTask('k', "sit");
-          tQueue->addTask('i', "");
+          // tQueue->addTask('k', "sit");  // Disabled sitting behavior when using camera
+          // tQueue->addTask('i', "");
           currentX = 0;
         }
 #endif
@@ -351,6 +354,13 @@ int coords[3];
 
 void taskReadCamera(void *par) {
   while (cameraTaskActiveQ) {
+    // Check for single-shot timeout (auto-stop after 2 seconds)
+    if (cameraSingleShotQ && millis() - cameraSingleShotTimer > 2000) {
+      cameraSingleShotQ = false;
+      cameraTaskActiveQ = false;
+      break;
+    }
+    
 #ifndef USE_WIRE1
     while (
 #ifdef GYRO_PIN
@@ -383,7 +393,8 @@ void taskReadCamera(void *par) {
       read_Sentry2Camera();
 #endif
     cameraLockI2c = false;
-    // vTaskDelay(1);
+    // Add delay to allow other tasks (like IMU) to access I2C bus
+    vTaskDelay(pdMS_TO_TICKS(5));  // Reduced to 5ms delay for better responsiveness
   }
   vTaskDelete(NULL);
 }
@@ -405,7 +416,7 @@ void read_camera() {
   // while (!detectedObjectQ && millis() - waitingTime < 20)
   //   delay(1); // wait for the camera to detect an object in another core
   if (detectedObjectQ) {
-    cameraBehavior(xCoord, yCoord, width);
+    // cameraBehavior(xCoord, yCoord, width);
     detectedObjectQ = false;
   }
 }
@@ -452,51 +463,36 @@ void muCameraSetup() {
   //  motion.loadBySkillName("rest");
   //  transform(motion.dutyAngles);
   cameraSetupSuccessful = (err == MU_OK);
-  if (cameraSetupSuccessful)
-    (*Mu).VisionBegin(object[objectIdx]);
-  else
+  if (cameraSetupSuccessful) {
+    (*Mu).VisionBegin(VISION_COLOR_DETECT);
+    (*Mu).write(VISION_COLOR_DETECT, kLabel, MU_COLOR_RED);
+    (*Mu).CameraSetAwb(kLockWhiteBalance);
+  } else
     PTL("Failed to initialize the camera!");
   noResultTime = millis();
 }
 
 void read_MuCamera() {
   if (cameraSetupSuccessful) {
-    if ((*Mu).GetValue(object[objectIdx], kStatus)) {  // update vision result and get status, 0: undetected, other:
-      // PTL(objectName[objectIdx]);
+    if ((*Mu).GetValue(VISION_COLOR_DETECT, kStatus)) {
+      xCoord = (*Mu).GetValue(VISION_COLOR_DETECT, kXValue);
+      yCoord = (*Mu).GetValue(VISION_COLOR_DETECT, kYValue);
+      width = (*Mu).GetValue(VISION_COLOR_DETECT, kWidthValue);
+      height = (*Mu).GetValue(VISION_COLOR_DETECT, kHeightValue);
+      // Serial.printf("c: x=%d, y=%d, width=%d, height=%d\n", xCoord, yCoord, width, height);
       updateCoordinateLock = true;
-      xCoord = (int)(*Mu).GetValue(object[objectIdx], kXValue);
-      yCoord = (int)(*Mu).GetValue(object[objectIdx], kYValue);
-      width = (int)(*Mu).GetValue(object[objectIdx], kWidthValue);
-      height = (int)(*Mu).GetValue(object[objectIdx], kHeightValue);
-      updateCoordinateLock = false;
-      // vvvvvvvvvvvv ball vvvvvvvvvvvvv
-      if (objectIdx == 1) {
-        int ballType = (*Mu).GetValue(object[objectIdx], kLabel);
-        if (lastBallType != ballType) {
-          switch ((*Mu).GetValue(object[objectIdx], kLabel)) {  // get vision result: label value
-            case MU_BALL_TABLE_TENNIS:
-              PTLF("table tennis");
-              break;
-            case MU_BALL_TENNIS:
-              PTLF("tennis");
-              break;
-            default:
-              PTLF("unknow ball type");
-              break;
-          }
-          lastBallType = ballType;
-        }
-      }
-      //^^^^^^^^^^^^^ ball ^^^^^^^^^^^^^^
       detectedObjectQ = true;
-      noResultTime = millis();  // update the timer
-    } else if (millis() - noResultTime > 2000) {  // if no object is detected for 2 seconds, switch object
-      (*Mu).VisionEnd(object[objectIdx]);
-      objectIdx = (objectIdx + 1) % (sizeof(object) / 2);
-      (*Mu).VisionBegin(object[objectIdx]);
-      PTL(objectName[objectIdx]);
+      updateCoordinateLock = false;
       noResultTime = millis();
-      beep(25, 50, 50, objectIdx + 1);
+    } else {
+      // Reset coordinates when no object is detected
+      updateCoordinateLock = true;
+      xCoord = imgRangeX / 2;  // Set to center so calculation gives 0
+      yCoord = imgRangeY / 2;  // Set to center so calculation gives 0
+      width = 0;
+      height = 0;
+      updateCoordinateLock = false;
+      detectedObjectQ = false;
     }
   }
 }
@@ -570,6 +566,15 @@ void read_Sentry1Camera() {
       updateCoordinateLock = false;
       detectedObjectQ = true;
       delay(10);
+    } else {
+      // Reset coordinates when no object is detected
+      updateCoordinateLock = true;
+      xCoord = imgRangeX / 2;  // Set to center so calculation gives 0
+      yCoord = imgRangeY / 2;  // Set to center so calculation gives 0
+      width = 0;
+      height = 0;
+      updateCoordinateLock = false;
+      detectedObjectQ = false;
     }
   }
   // do something or delay some time
@@ -646,6 +651,15 @@ void read_Sentry2Camera() {
     //   Serial.print(",label=");
     //   Serial.println(l);
     // }
+  } else {
+    // Reset coordinates when no object is detected
+    updateCoordinateLock = true;
+    xCoord = imgRangeX / 2;  // Set to center so calculation gives 0
+    yCoord = imgRangeY / 2;  // Set to center so calculation gives 0
+    width = 0;
+    height = 0;
+    updateCoordinateLock = false;
+    detectedObjectQ = false;
   }
 }
 #endif
@@ -675,6 +689,8 @@ void groveVisionSetup() {
 #ifdef GYRO_PIN
   // extern TaskHandle_t TASK_imu;
   // extern bool updateGyroQ;
+  // Commented out to keep gyroscope active when using camera
+  /*
   if (TASK_imu != NULL) {
     updateGyroQ = false;  // 直接设置运行标志来优雅地结束IMU任务
     // 等待任务自然结束
@@ -684,6 +700,7 @@ void groveVisionSetup() {
     TASK_imu = NULL;
     PTLF("Terminated TASK_imu task gracefully");
   }
+  */
 #endif
   AI.begin(&CAMERA_WIRE);
 
@@ -739,6 +756,15 @@ void read_GroveVision() {
       {
         FPS();
       }
+    } else {
+      // Reset coordinates when no object is detected
+      updateCoordinateLock = true;
+      xCoord = imgRangeX / 2;  // Set to center so calculation gives 0
+      yCoord = imgRangeY / 2;  // Set to center so calculation gives 0
+      width = 0;
+      height = 0;
+      updateCoordinateLock = false;
+      detectedObjectQ = false;
     }
   }
 }

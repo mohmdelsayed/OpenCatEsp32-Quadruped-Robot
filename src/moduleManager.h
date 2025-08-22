@@ -146,7 +146,8 @@ void initModule(char moduleCode) {
 #ifdef CAMERA
     case EXTENSION_CAMERA:
       {
-        updateGyroQ = false;
+        // Don't disable gyro updates - use I2C locking instead for better coexistence
+        // updateGyroQ = false;
         i2cDetect(Wire);
 // #if defined BiBoard_V1_0 && !defined NYBBLE
 //         i2cDetect(Wire1);
