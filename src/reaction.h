@@ -1133,26 +1133,18 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
                 }
 
                 if (cameraPrintQ && (cameraTaskActiveQ || isSingleShot)) {
-                  // For single-shot, start camera task if needed and wait briefly for a fresh frame
-                  unsigned long waitStart = millis();
-                  int prevX = xCoord, prevY = yCoord, prevW = width, prevH = height;
+                  // For single-shot, start camera task if needed, but DO NOT block waiting for a fresh frame.
                   if (isSingleShot && !cameraTaskActiveQ) {
-                    read_camera(); // start the camera task
+                    read_camera(); // start the camera task asynchronously
                   }
 
-                  // Wait up to ~200ms for new data to arrive from the camera task
-                  // Conditions to break early: detectedObjectQ set, or any coordinate/size changed
-                  while (isSingleShot && millis() - waitStart < 200) {
-                    if (detectedObjectQ || xCoord != prevX || yCoord != prevY || width != prevW || height != prevH)
-                      break;
-                    delay(5);
-                  }
-
+                  // Immediately return the latest cached camera result to avoid stalling the control loop.
                   printToAllPorts('=');
                   showRecognitionResult(xCoord, yCoord, width, height);
                   PTL();
-                  if (cameraPrintQ == 1)
+                  if (cameraPrintQ == 1) {
                     cameraPrintQ = 0;  // XCp: print once then stop
+                  }
 
                   // Restore transform speed after a single-shot read
                   if (isSingleShot) {

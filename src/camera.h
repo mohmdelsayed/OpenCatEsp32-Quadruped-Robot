@@ -202,7 +202,6 @@ bool cameraSetup() {
 #endif
   for (byte i = 0; i < sizePars; i++)
     *par[i] = initPars[i];
-  transformSpeed = 0;
   widthCounter = 0;
 #ifdef MU_CAMERA
   if (MuQ)
@@ -317,7 +316,7 @@ void cameraBehavior(int xCoord, int yCoord, int width) {
             {backDownX, (int8_t)-backDownY},
             {(int8_t)-backDownX, (int8_t)-backDownY},
         };
-        transformSpeed = tranSpeed / 4.0;
+  float cameraTransformSpeed = tranSpeed;
         for (int i = 0; i < DOF; i++) {
           float adj = float(base[i]) + (feedBackArray[i][0] ? currentX * 10.0 / feedBackArray[i][0] : 0)
                       + (feedBackArray[i][1] ? currentY * 10.0 / feedBackArray[i][1] : 0);
@@ -335,7 +334,7 @@ void cameraBehavior(int xCoord, int yCoord, int width) {
         // PTL();
         // newCmd[16] = '~';
         // printList((int8_t *)newCmd);
-        transform((int8_t *)newCmd, 1, transformSpeed);
+  transform((int8_t *)newCmd, 1, cameraTransformSpeed);
         token = '\0';  // avoid  conflicting with the balancing reaction
                        // }
 #ifdef ROTATE
@@ -362,13 +361,15 @@ void taskReadCamera(void *par) {
     }
     
 #ifndef USE_WIRE1
-    while (
+    // If I2C bus is busy, yield briefly and retry next loop without blocking
+    if (
 #ifdef GYRO_PIN
-        imuLockI2c ||  // wait for the imu to release lock. potentially to cause dead lock with camera
+        imuLockI2c ||
 #endif
-        gestureLockI2c ||  // wait for the gesture to release lock. potentially to cause dead lock with camera
-        eepromLockI2c)     // wait for the EEPROM operations to complete
-      delay(1);
+        gestureLockI2c || eepromLockI2c) {
+      vTaskDelay(pdMS_TO_TICKS(2));
+      continue;
+    }
     cameraLockI2c = true;
 #endif
     if (xCoord != lastXcoord || yCoord != lastYcoord)
@@ -392,9 +393,9 @@ void taskReadCamera(void *par) {
     if (Sentry2Q)
       read_Sentry2Camera();
 #endif
-    cameraLockI2c = false;
-    // Add delay to allow other tasks (like IMU) to access I2C bus
-    vTaskDelay(pdMS_TO_TICKS(5));  // Reduced to 5ms delay for better responsiveness
+  cameraLockI2c = false;
+  // Add delay to allow other tasks (like IMU) to access I2C bus
+  vTaskDelay(pdMS_TO_TICKS(5));  // Reduced to 5ms delay for better responsiveness
   }
   vTaskDelete(NULL);
 }

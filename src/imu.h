@@ -623,13 +623,13 @@ bool readIMU() {
   bool updated = false;
   if (updateGyroQ && !(frame % imuSkip)) {
 #ifndef USE_WIRE1
-    while (cameraLockI2c)
-      delay(1);  // wait for the i2c bus to be released by the camera. potentially to cause dead lock with imu.
+    // If camera is using I2C, skip this cycle to avoid blocking and keep loop timing consistent
+    if (cameraLockI2c)
+      return false;
 #endif
-    while (gestureLockI2c)
-      delay(1);  // wait for the i2c bus to be released by the gesture. potentially to cause dead lock with imu.
-    while (eepromLockI2c)
-      delay(1);  // wait for the i2c bus to be released by the EEPROM operations.
+    // If gesture or EEPROM are using I2C, skip this cycle to avoid blocking
+    if (gestureLockI2c || eepromLockI2c)
+      return false;
     imuLockI2c = true;
     // Get the stack high water mark
     // uint32_t stackHighWaterMark = uxTaskGetStackHighWaterMark(TASK_imu);
