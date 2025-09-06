@@ -152,7 +152,7 @@ void initModule(char moduleCode) {
 // #if defined BiBoard_V1_0 && !defined NYBBLE
 //         i2cDetect(Wire1);
 // #endif
-        loadBySkillName("sit");
+  // Do not change posture automatically when enabling the camera module
         if (!cameraSetup()) {
           int i = indexOfModule(moduleCode);
           PTHL("*** Fail to start ", moduleNames[i]);
@@ -332,6 +332,25 @@ void reconfigureTheActiveModule(char *moduleCode) {
 }
 
 void initModuleManager() {
+  // Force-disable camera and quick demo at boot. They can be enabled explicitly via XC or XQ.
+  int8_t camIdx = indexOfModule(EXTENSION_CAMERA);
+  if (camIdx >= 0) {
+    moduleActivatedQ[camIdx] = false;
+#ifdef I2C_EEPROM_ADDRESS
+    i2c_eeprom_write_byte(EEPROM_MODULE_ENABLED_LIST + camIdx, false);
+#else
+    config.putBytes("moduleState", moduleActivatedQ, sizeof(moduleList) / sizeof(char));
+#endif
+  }
+  int8_t quickIdx = indexOfModule(EXTENSION_QUICK_DEMO);
+  if (quickIdx >= 0) {
+    moduleActivatedQ[quickIdx] = false;
+#ifdef I2C_EEPROM_ADDRESS
+    i2c_eeprom_write_byte(EEPROM_MODULE_ENABLED_LIST + quickIdx, false);
+#else
+    config.putBytes("moduleState", moduleActivatedQ, sizeof(moduleList) / sizeof(char));
+#endif
+  }
   byte moduleCount = sizeof(moduleList) / sizeof(char);
   PTHL("Module count: ", moduleCount);
   for (byte i = 0; i < moduleCount; i++) {

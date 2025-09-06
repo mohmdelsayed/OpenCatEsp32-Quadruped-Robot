@@ -341,7 +341,8 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
       fineAdjustQ = true;
       // updateGyroQ = true;
       gyroBalanceQ = true;
-      autoSwitch = RANDOM_MIND;
+      // Disable random demo behaviors at boot; RL will drive motions explicitly
+      autoSwitch = 0;
       initialBoot = false;
     }
 #ifdef PWM_LED_PIN
@@ -1108,6 +1109,8 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
               {
                 char *option = newCmd;
                 bool isSingleShot = false;
+                // Preserve current transform speed so single-shot camera reads don't permanently change it
+                byte prevTransformSpeed = transformSpeed;
                 while (*(++option) != '~') {
                   if (*option == 'P')
                     cameraPrintQ = 2;
@@ -1150,6 +1153,11 @@ void reaction() {  // Reminder:  reaction() is repeatedly called in the "forever
                   PTL();
                   if (cameraPrintQ == 1)
                     cameraPrintQ = 0;  // XCp: print once then stop
+
+                  // Restore transform speed after a single-shot read
+                  if (isSingleShot) {
+                    transformSpeed = prevTransformSpeed;
+                  }
                 }
 
                 break;

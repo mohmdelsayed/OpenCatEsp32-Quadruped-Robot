@@ -31,7 +31,7 @@ bool cameraSingleShotQ = false;  // Track if camera is in single-shot mode
 unsigned long cameraSingleShotTimer = 0;  // Timer for single-shot camera operations
 
 bool detectedObjectQ = false;
-bool cameraReactionQ = true;
+bool cameraReactionQ = false;
 bool updateCoordinateLock = false;
 int8_t cameraPrintQ = 0;
 int xCoord = 50, yCoord = 50, width = 0, height = 0; // the x y returned by the sensor, initialized to center
